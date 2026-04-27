@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>● Watchpost</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%2322c55e'/%3E%3C/svg%3E" />
+  <style>
+    /* Color tokens — WCAG-AA contrast on dark background */
+    :root {
+      --bg:           #0f172a;
+      --panel:        #1e293b;
+      --panel-2:      #334155;
+      --text:         #f8fafc;   /* slate-50  — brightest, primary content */
+      --text-dim:     #cbd5e1;   /* slate-300 — labels, secondary info */
+      --text-faint:   #94a3b8;   /* slate-400 — captions, metadata */
+      --ok:           #22c55e;  /* green */
+      --warn:         #f59e0b;  /* amber */
+      --crit:         #ef4444;  /* red */
+      --info:         #3b82f6;  /* blue */
+      --border:       #334155;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; min-height: 100vh; }
+    body { padding: 16px; line-height: 1.5; font-size: 14px; }
+    h1, h2, h3 { font-weight: 600; }
+
+    /* Top banner */
+    .banner { padding: 16px 20px; border-radius: 8px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+    .banner.ok   { background: rgba(34,197,94,0.12);  border: 1px solid var(--ok); }
+    .banner.warn { background: rgba(245,158,11,0.12); border: 1px solid var(--warn); }
+    .banner.crit { background: rgba(239,68,68,0.12);  border: 1px solid var(--crit); }
+    .banner.stale { background: rgba(100,116,139,0.18); border: 1px solid var(--text-faint); }
+    .banner-status { font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 12px; }
+    .banner-meta   { font-size: 13px; color: var(--text-dim); text-align: right; }
+    .banner.ok   .banner-status { color: var(--ok); }
+    .banner.warn .banner-status { color: var(--warn); }
+    .banner.crit .banner-status { color: var(--crit); }
+    .banner.stale .banner-status { color: var(--text-dim); }
+
+    /* Grid layout */
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; }
+    .panel { background: var(--panel); border-radius: 8px; padding: 14px 16px; border: 1px solid var(--border); }
+    .panel h2 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text); margin-bottom: 10px; opacity: 0.7; }
+    .panel.span-2 { grid-column: span 2; }
+
+    /* Pills + symbols (color + shape redundancy for color-blind users) */
+    .pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+    .pill.ok   { background: rgba(34,197,94,0.15);  color: var(--ok); }
+    .pill.warn { background: rgba(245,158,11,0.15); color: var(--warn); }
+    .pill.crit { background: rgba(239,68,68,0.15);  color: var(--crit); }
+    .pill.dim  { background: rgba(100,116,139,0.15); color: var(--text-dim); }
+    .symbol-ok::before   { content: "✓"; }
+    .symbol-warn::before { content: "⚠"; }
+    .symbol-crit::before { content: "✗"; }
+    .symbol-dim::before  { content: "○"; }
+
+    /* Container row */
+    .container-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); }
+    .container-row:last-child { border-bottom: none; }
+    .container-name { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; }
+    .container-meta { font-size: 12px; color: var(--text-dim); }
+
+    /* Watchdog row */
+    .check-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); gap: 12px; }
+    .check-row:last-child { border-bottom: none; }
+    .check-name { font-size: 13px; }
+    .check-msg { font-size: 11px; color: var(--text-faint); margin-top: 2px; }
+
+    /* Backlog row */
+    .stat-row { display: flex; justify-content: space-between; align-items: baseline; padding: 4px 0; }
+    .stat-label { font-size: 13px; color: var(--text-dim); }
+    .stat-value { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 14px; font-weight: 600; }
+    .stat-value.warn { color: var(--warn); }
+    .stat-value.crit { color: var(--crit); }
+
+    /* Progress bar (budgets, ingestion bars) */
+    .bar-row { display: grid; grid-template-columns: 90px 1fr 70px; align-items: center; gap: 8px; padding: 4px 0; }
+    .bar-label { font-size: 12px; color: var(--text-dim); font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+    .bar-track { height: 8px; background: var(--panel-2); border-radius: 4px; overflow: hidden; }
+    .bar-fill  { height: 100%; background: var(--info); border-radius: 4px; transition: width 200ms; }
+    .bar-fill.warn { background: var(--warn); }
+    .bar-fill.crit { background: var(--crit); }
+    .bar-value { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; text-align: right; color: var(--text-dim); }
+
+    /* Deploy panel */
+    .deploy-sha { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 16px; color: var(--info); }
+    .deploy-msg { font-size: 13px; color: var(--text); margin-top: 6px; line-height: 1.4; word-wrap: break-word; }
+    .deploy-time { font-size: 12px; color: var(--text-dim); margin-top: 6px; }
+
+    /* Footer */
+    .footer { margin-top: 16px; padding: 10px; text-align: center; font-size: 11px; color: var(--text-faint); }
+    .footer a { color: var(--text-dim); text-decoration: none; }
+    .footer a:hover { color: var(--text); }
+
+    /* Loading state */
+    .loading { color: var(--text-faint); font-style: italic; }
+
+    /* Responsive */
+    @media (max-width: 700px) {
+      .panel.span-2 { grid-column: span 1; }
+      .banner { flex-direction: column; align-items: flex-start; }
+      .banner-meta { text-align: left; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="banner" class="banner stale">
+    <div class="banner-status">
+      <span class="symbol-dim">&nbsp;</span>
+      <span id="banner-text">Loading…</span>
+    </div>
+    <div class="banner-meta" id="banner-meta">—</div>
+  </div>
+
+  <div class="grid">
+    <div class="panel span-2">
+      <h2>Containers</h2>
+      <div id="containers" class="loading">Loading…</div>
+    </div>
+
+    <div class="panel">
+      <h2>Deploy</h2>
+      <div id="deploy" class="loading">Loading…</div>
+    </div>
+
+    <div class="panel">
+      <h2>Backlogs</h2>
+      <div id="backlogs" class="loading">Loading…</div>
+    </div>
+
+    <div class="panel">
+      <h2>API Budgets</h2>
+      <div id="budgets" class="loading">Loading…</div>
+    </div>
+
+    <div class="panel">
+      <h2>Ingestion (24h)</h2>
+      <div id="ingestion" class="loading">Loading…</div>
+    </div>
+
+    <div class="panel">
+      <h2>RSS Feed Health</h2>
+      <div id="rss" class="loading">Loading…</div>
+    </div>
+
+    <div class="panel">
+      <h2>Watchdog</h2>
+      <div id="watchdog" class="loading">Loading…</div>
+    </div>
+
+    <div class="panel">
+      <h2>Auto-restart</h2>
+      <div id="auto-restart" class="loading">Loading…</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Polled every 30s · Source data updates every 5min · <a id="source-link" href="#" target="_blank" rel="noopener">view raw JSON</a>
+  </div>
+
+  <script src="status.js"></script>
+</body>
+</html>

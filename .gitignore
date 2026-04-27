@@ -1,0 +1,18 @@
+# macOS
+.DS_Store
+._*
+.AppleDouble
+.LSOverride
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*~
+
+# Python (the local dev http.server doesn't generate any, but just in case)
+__pycache__/
+*.pyc
+
+# Local-only test fixtures (use sample_status.json instead if useful)
+*.local.json

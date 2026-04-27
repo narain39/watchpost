@@ -1,0 +1,68 @@
+{
+  "generated_at": "2026-04-26T13:15:00Z",
+  "schema_version": 1,
+  "vps": {
+    "uptime_seconds": 1814400,
+    "load_avg_1m": 1.53
+  },
+  "containers": [
+    {"name": "news_api", "state": "running", "health": "healthy", "uptime_s": 1245, "created": "2026-04-26T12:42:27Z"},
+    {"name": "news_db", "state": "running", "health": "healthy", "uptime_s": 432000, "created": "2026-04-21T14:00:00Z"},
+    {"name": "stoxopia_pipeline_vps", "state": "running", "health": "healthy", "uptime_s": 1140, "created": "2026-04-26T12:55:00Z"},
+    {"name": "stoxopia_backend_vps", "state": "running", "health": "healthy", "uptime_s": 118800, "created": "2026-04-25T04:15:00Z"},
+    {"name": "stoxopia_relay_vps", "state": "running", "health": "healthy", "uptime_s": 870, "created": "2026-04-26T13:00:00Z"},
+    {"name": "stoxopia_postgres_vps", "state": "running", "health": "healthy", "uptime_s": 1814400, "created": "2026-04-05T13:15:00Z"},
+    {"name": "stoxopia_redis_vps", "state": "running", "health": "healthy", "uptime_s": 1814400, "created": "2026-04-05T13:15:00Z"}
+  ],
+  "deploy": {
+    "current_sha": "7714e50",
+    "current_message": "Document 2026-04-25 uvicorn deadlock + cross-link code to post-mortem",
+    "last_deploy_at": "2026-04-26T12:42:27Z"
+  },
+  "backlogs": {
+    "enrich_pending": 45,
+    "enhance_pending_direct": 1802,
+    "enhance_pending_google": 11200,
+    "source_google_news_residual": 1910,
+    "total": 221113
+  },
+  "ingestion_24h": {
+    "rss": 5713,
+    "finnhub": 2591,
+    "newsdata": 756,
+    "fmp": 188,
+    "newsapi_ticker": 164,
+    "newsapi": 155,
+    "marketaux": 84
+  },
+  "rss_health": {
+    "available": true,
+    "total": 63,
+    "healthy": 62,
+    "warning": 0,
+    "critical": 1,
+    "critical_feeds": ["SEC Filings via Google"],
+    "last_check_at": "2026-04-26T12:00:00Z"
+  },
+  "watchdog": {
+    "deploy_drift": {"status": "ok", "last_run": "2026-04-26T13:00:00Z", "message": "SHA=7714e50, code present, stable"},
+    "api_liveness": {"status": "ok", "last_run": "2026-04-26T13:00:00Z", "message": "API /health 200 + smoke test passed"},
+    "enrichment_liveness": {"status": "ok", "last_run": "2026-04-26T12:30:00Z", "message": "57/60 enriched last cycle"},
+    "fetcher_production": {"status": "ok", "last_run": "2026-04-26T12:45:00Z", "message": "All 7 fetchers active in last 24h"},
+    "rss_health": {"status": "warning", "last_run": "2026-04-26T12:00:00Z", "message": "1 critical feed: SEC Filings via Google"},
+    "publisher_attribution": {"status": "ok", "last_run": "2026-04-26T06:00:00Z", "message": "1910 google-news residual; below 5000 threshold"}
+  },
+  "budgets": {
+    "newsapi": {"used": 62, "limit": 90, "pct": 0.69},
+    "fmp": {"used": 20, "limit": 40, "pct": 0.50},
+    "finnhub": {"used": 719, "limit": 1900, "pct": 0.38},
+    "marketaux": {"used": 60, "limit": 90, "pct": 0.67},
+    "newsdata": {"used": 90, "limit": 180, "pct": 0.50}
+  },
+  "auto_restart": {
+    "consecutive_critical": 0,
+    "last_restart_at": "2026-04-26T09:41:52Z",
+    "today_count": 0,
+    "daily_cap": 4
+  }
+}
