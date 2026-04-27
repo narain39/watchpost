@@ -151,11 +151,25 @@ function renderContainers(data) {
 function renderDeploy(data) {
   const el = $("deploy");
   const d = data.deploy || {};
-  el.innerHTML = `
-    <div class="deploy-sha">${escapeHtml(d.current_sha || "unknown")}</div>
-    <div class="deploy-msg">${escapeHtml(d.current_message || "—")}</div>
-    <div class="deploy-time">Deployed ${relativeTime(d.last_deploy_at)}</div>
-  `;
+  // Backwards-compat: schema v1 had a flat {current_sha, current_message, last_deploy_at}.
+  // Schema v1.1+ nests per-app: {fna: {...}, stx: {...}}.
+  const apps = d.current_sha ? { fna: d } : d;
+  const order = ["fna", "stx"];
+  const labelMap = { fna: "FNA", stx: "STX" };
+  el.innerHTML = order.filter(k => apps[k]).map((k, i) => {
+    const a = apps[k];
+    const sep = i > 0 ? 'style="margin-top:12px; padding-top:12px; border-top: 1px solid var(--border);"' : '';
+    return `
+      <div ${sep}>
+        <div style="display:flex; justify-content:space-between; align-items:baseline;">
+          <span class="deploy-sha">${escapeHtml(a.current_sha || "unknown")}</span>
+          <span style="font-size:11px; font-weight:700; color:var(--text-dim); letter-spacing:0.05em;">${labelMap[k] || k.toUpperCase()}</span>
+        </div>
+        <div class="deploy-msg">${escapeHtml(a.current_message || "—")}</div>
+        <div class="deploy-time">Deployed ${relativeTime(a.last_deploy_at)}</div>
+      </div>
+    `;
+  }).join("");
 }
 
 function renderBacklogs(data) {
