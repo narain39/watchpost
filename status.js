@@ -1,15 +1,23 @@
 // Watchpost — fetches the public Gist and renders Stoxopia + FNA ops state.
 //
-// Configure GIST_URL below. The page polls every POLL_INTERVAL_MS.
-// "Stale" = data older than STALE_THRESHOLD_MS triggers the stale banner.
+// Layout (post 2026-04-27 redesign):
+//   ┌────────────────────────────────────┐
+//   │ Banner (overall, both apps)        │
+//   ├────────────────────────────────────┤
+//   │ Shared strip: VPS · auto-restart · │
+//   │ collector freshness                │
+//   ├────────────────────────────────────┤
+//   │ Tabs: [FNA] [STX]                  │
+//   ├────────────────────────────────────┤
+//   │ Tab content (FNA panels OR STX     │
+//   │ panels — switched via #fna/#stx    │
+//   │ URL hash)                          │
+//   └────────────────────────────────────┘
 
 // ─── Config ──────────────────────────────────────────────────────────────
-// Replace GIST_RAW_URL with the raw URL of your public gist's status.json.
-// You can also pass ?gist=<url> in the query string to override at runtime
-// (useful for testing without redeploying).
 const DEFAULT_GIST_URL = "https://gist.githubusercontent.com/narain39/caec144f52457dbe0b2b98b0552b5350/raw/status.json";
-const POLL_INTERVAL_MS = 30 * 1000;     // 30s
-const STALE_THRESHOLD_MS = 10 * 60 * 1000;  // 10 min — data older than this = stale banner
+const POLL_INTERVAL_MS = 30 * 1000;
+const STALE_THRESHOLD_MS = 10 * 60 * 1000;
 
 const params = new URLSearchParams(window.location.search);
 const GIST_URL = params.get("gist") || DEFAULT_GIST_URL;
@@ -47,21 +55,14 @@ function fmtNum(n) {
 }
 
 function pillFor(status) {
-  // Returns { className, symbolClass, label } for any status string
   switch (status) {
-    case "ok":
-    case "running":
-    case "healthy":
+    case "ok": case "running": case "healthy":
       return { className: "ok", symbolClass: "symbol-ok", label: "ok" };
-    case "warning":
-    case "warn":
+    case "warning": case "warn":
       return { className: "warn", symbolClass: "symbol-warn", label: "warn" };
-    case "critical":
-    case "crit":
-    case "unhealthy":
+    case "critical": case "crit": case "unhealthy":
       return { className: "crit", symbolClass: "symbol-crit", label: "critical" };
-    case "none":
-    case "":
+    case "none": case "":
       return { className: "dim", symbolClass: "symbol-dim", label: "—" };
     default:
       return { className: "dim", symbolClass: "symbol-dim", label: status || "—" };
@@ -74,6 +75,67 @@ function escapeHtml(s) {
   })[c]);
 }
 
+// Partition containers by name prefix
+function isFnaContainer(c) { return c.name && c.name.startsWith("news_"); }
+function isStxContainer(c) { return c.name && c.name.startsWith("stoxopia_"); }
+
+// Compute the worst signal in a list of containers (for tab dots)
+function containerWorst(containers) {
+  let worst = "ok";
+  for (const c of containers) {
+    if (c.state !== "running" || c.health === "unhealthy") return "crit";
+    if (c.health === "starting") worst = worstOf(worst, "warn");
+  }
+  return worst;
+}
+
+function worstOf(a, b) {
+  const rank = { ok: 0, warn: 1, crit: 2 };
+  return (rank[b] || 0) > (rank[a] || 0) ? b : a;
+}
+
+// Compute worst signal for the FNA tab (containers + watchdog + rss)
+function fnaWorst(data) {
+  let worst = "ok";
+  worst = worstOf(worst, containerWorst((data.containers || []).filter(isFnaContainer)));
+  for (const check of Object.values(data.watchdog || {})) {
+    worst = worstOf(worst, check.status === "critical" ? "crit" : check.status);
+  }
+  if (data.rss_health?.critical > 0) worst = worstOf(worst, "crit");
+  if (data.rss_health?.warning > 0) worst = worstOf(worst, "warn");
+  return worst;
+}
+
+// Compute worst signal for the STX tab (currently containers only)
+function stxWorst(data) {
+  return containerWorst((data.containers || []).filter(isStxContainer));
+}
+
+// ─── Tab routing ─────────────────────────────────────────────────────────
+
+function getActiveTab() {
+  const hash = (window.location.hash || "").replace("#", "");
+  return ["fna", "stx"].includes(hash) ? hash : "fna";
+}
+
+function setActiveTab(name) {
+  document.querySelectorAll(".tab").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.tab === name);
+  });
+  document.querySelectorAll(".tab-panel").forEach((panel) => {
+    panel.classList.toggle("active", panel.dataset.tab === name);
+  });
+  if (window.location.hash !== "#" + name) {
+    history.replaceState(null, "", "#" + name);
+  }
+}
+
+document.querySelectorAll(".tab").forEach((btn) => {
+  btn.addEventListener("click", () => setActiveTab(btn.dataset.tab));
+});
+window.addEventListener("hashchange", () => setActiveTab(getActiveTab()));
+setActiveTab(getActiveTab());  // initial render
+
 // ─── Renderers ───────────────────────────────────────────────────────────
 
 function renderBanner(data) {
@@ -85,28 +147,12 @@ function renderBanner(data) {
   const generatedValid = !isNaN(generated.getTime());
   const age = generatedValid ? Date.now() - generated.getTime() : Infinity;
 
-  // Compute overall status: stale > critical > warning > ok
   let overall = "ok";
   if (!generatedValid || age > STALE_THRESHOLD_MS) {
     overall = "stale";
   } else {
-    // Container health
-    for (const c of (data.containers || [])) {
-      if (c.state !== "running") { overall = "crit"; break; }
-      if (c.health === "unhealthy") { overall = "crit"; break; }
-    }
-    // Watchdog
-    if (overall !== "crit") {
-      const watchdog = data.watchdog || {};
-      for (const check of Object.values(watchdog)) {
-        if (check.status === "critical") { overall = "crit"; break; }
-        if (check.status === "warning") overall = "warn";
-      }
-    }
-    // RSS health
-    if (overall !== "crit" && data.rss_health?.critical > 0) {
-      overall = overall === "ok" ? "warn" : overall;
-    }
+    overall = worstOf(overall, fnaWorst(data));
+    overall = worstOf(overall, stxWorst(data));
   }
 
   banner.className = `banner ${overall}`;
@@ -117,7 +163,6 @@ function renderBanner(data) {
   text.parentElement.innerHTML = `<span class="${sym}">&nbsp;</span><span id="banner-text">${labelMap[overall]}</span>`;
   meta.textContent = `Last updated: ${relativeTime(data.generated_at)}`;
 
-  // Update document title + favicon
   const titleSym = { ok: "✓", warn: "⚠", crit: "✗", stale: "○" };
   document.title = `${titleSym[overall]} Watchpost`;
   const colorMap = { ok: "%2322c55e", warn: "%23f59e0b", crit: "%23ef4444", stale: "%2364748b" };
@@ -125,11 +170,51 @@ function renderBanner(data) {
     `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='${colorMap[overall]}'/%3E%3C/svg%3E`;
 }
 
-function renderContainers(data) {
-  const el = $("containers");
-  const containers = data.containers || [];
-  if (!containers.length) { el.innerHTML = `<div class="loading">No container data</div>`; return; }
-  el.innerHTML = containers.map((c) => {
+function renderTabDots(data) {
+  const fnaDot = $("tab-dot-fna");
+  const stxDot = $("tab-dot-stx");
+  fnaDot.className = `tab-dot ${fnaWorst(data)}`;
+  stxDot.className = `tab-dot ${stxWorst(data)}`;
+}
+
+function renderShared(data) {
+  // VPS
+  const v = data.vps || {};
+  $("shared-vps").textContent = uptimeStr(v.uptime_seconds);
+  $("shared-vps-sub").textContent = v.load_avg_1m !== undefined ? `Load: ${v.load_avg_1m}` : "—";
+
+  // Auto-restart — symmetric per-app display (FNA tracked, STX not configured yet)
+  const a = data.auto_restart || {};
+  const fnaToday = a.today_count || 0;
+  const fnaCap = a.daily_cap || 4;
+  $("shared-autorestart").innerHTML = `FNA: <strong>${fnaToday}/${fnaCap}</strong> · STX: <span style="color:var(--text-faint);">not configured</span>`;
+  const lastRestart = a.last_restart_at ? `FNA last restart ${relativeTime(a.last_restart_at)}` : "FNA: no restarts on record";
+  $("shared-autorestart-sub").textContent = lastRestart;
+
+  // Collector freshness — two timestamps tell different stories:
+  //   generated_at      → "is the collector alive?" (always recent in healthy state)
+  //   data_changed_at   → "has anything actually changed?" (could be hours ago and that's GOOD)
+  const generated = data.generated_at;
+  const dataChanged = data.data_changed_at;
+  $("shared-collector").textContent = relativeTime(generated);
+  if (generated) {
+    const age = Date.now() - new Date(generated).getTime();
+    if (age > STALE_THRESHOLD_MS) {
+      $("shared-collector-sub").innerHTML = `<span style="color:var(--warn);">Stale — host cron may be down</span>`;
+    } else if (dataChanged) {
+      $("shared-collector-sub").textContent = `No changes in ${relativeTime(dataChanged).replace(" ago", "")}`;
+    } else {
+      $("shared-collector-sub").textContent = `Updates every 5 min`;
+    }
+  } else {
+    $("shared-collector-sub").textContent = "—";
+  }
+}
+
+function renderContainerList(elId, list) {
+  const el = $(elId);
+  if (!list.length) { el.innerHTML = `<div class="loading">No container data</div>`; return; }
+  el.innerHTML = list.map((c) => {
     let status = c.health === "healthy" ? "ok"
                 : c.health === "unhealthy" ? "crit"
                 : c.state === "running" ? "ok"
@@ -148,28 +233,33 @@ function renderContainers(data) {
   }).join("");
 }
 
+function renderFnaContainers(data) {
+  renderContainerList("fna-containers", (data.containers || []).filter(isFnaContainer));
+}
+
+function renderStxContainers(data) {
+  renderContainerList("stx-containers", (data.containers || []).filter(isStxContainer));
+}
+
+function renderDeployBlock(elId, app) {
+  const el = $(elId);
+  if (!app || !app.current_sha) {
+    el.innerHTML = `<div class="loading">No deploy data</div>`;
+    return;
+  }
+  el.innerHTML = `
+    <div class="deploy-sha">${escapeHtml(app.current_sha)}</div>
+    <div class="deploy-msg">${escapeHtml(app.current_message || "—")}</div>
+    <div class="deploy-time">Deployed ${relativeTime(app.last_deploy_at)}</div>
+  `;
+}
+
 function renderDeploy(data) {
-  const el = $("deploy");
   const d = data.deploy || {};
-  // Backwards-compat: schema v1 had a flat {current_sha, current_message, last_deploy_at}.
-  // Schema v1.1+ nests per-app: {fna: {...}, stx: {...}}.
+  // Backwards compat: flat schema treated as FNA-only
   const apps = d.current_sha ? { fna: d } : d;
-  const order = ["fna", "stx"];
-  const labelMap = { fna: "FNA", stx: "STX" };
-  el.innerHTML = order.filter(k => apps[k]).map((k, i) => {
-    const a = apps[k];
-    const sep = i > 0 ? 'style="margin-top:12px; padding-top:12px; border-top: 1px solid var(--border);"' : '';
-    return `
-      <div ${sep}>
-        <div style="display:flex; justify-content:space-between; align-items:baseline;">
-          <span class="deploy-sha">${escapeHtml(a.current_sha || "unknown")}</span>
-          <span style="font-size:11px; font-weight:700; color:var(--text-dim); letter-spacing:0.05em;">${labelMap[k] || k.toUpperCase()}</span>
-        </div>
-        <div class="deploy-msg">${escapeHtml(a.current_message || "—")}</div>
-        <div class="deploy-time">Deployed ${relativeTime(a.last_deploy_at)}</div>
-      </div>
-    `;
-  }).join("");
+  renderDeployBlock("fna-deploy", apps.fna);
+  renderDeployBlock("stx-deploy", apps.stx);
 }
 
 function renderBacklogs(data) {
@@ -286,27 +376,6 @@ function renderWatchdog(data) {
   }).join("");
 }
 
-function renderAutoRestart(data) {
-  const el = $("auto-restart");
-  const a = data.auto_restart || {};
-  const todayCls = a.today_count >= a.daily_cap ? "crit" : a.today_count >= 2 ? "warn" : "";
-  const consecCls = a.consecutive_critical >= 2 ? "warn" : "";
-  el.innerHTML = `
-    <div class="stat-row">
-      <span class="stat-label">Last restart</span>
-      <span class="stat-value" style="font-size:12px;">${relativeTime(a.last_restart_at)}</span>
-    </div>
-    <div class="stat-row">
-      <span class="stat-label">Today</span>
-      <span class="stat-value ${todayCls}">${a.today_count || 0}/${a.daily_cap || 4}</span>
-    </div>
-    <div class="stat-row">
-      <span class="stat-label">Consecutive CRITICAL</span>
-      <span class="stat-value ${consecCls}">${a.consecutive_critical || 0}</span>
-    </div>
-  `;
-}
-
 // ─── Main fetch loop ─────────────────────────────────────────────────────
 
 async function fetchAndRender() {
@@ -317,14 +386,16 @@ async function fetchAndRender() {
     const data = await resp.json();
 
     renderBanner(data);
-    renderContainers(data);
+    renderTabDots(data);
+    renderShared(data);
+    renderFnaContainers(data);
+    renderStxContainers(data);
     renderDeploy(data);
     renderBacklogs(data);
     renderBudgets(data);
     renderIngestion(data);
     renderRss(data);
     renderWatchdog(data);
-    renderAutoRestart(data);
   } catch (err) {
     console.error("Fetch failed:", err);
     const banner = $("banner");
