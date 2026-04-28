@@ -11,9 +11,9 @@
       --bg:           #0f172a;
       --panel:        #1e293b;
       --panel-2:      #334155;
-      --text:         #f8fafc;   /* slate-50  — brightest, primary content */
-      --text-dim:     #cbd5e1;   /* slate-300 — labels, secondary info */
-      --text-faint:   #94a3b8;   /* slate-400 — captions, metadata */
+      --text:         #ffffff;   /* pure white — primary content */
+      --text-dim:     #ffffff;   /* same — labels, values, secondary info (hierarchy via opacity/weight, not color) */
+      --text-faint:   #ffffff;   /* same — captions, metadata, watchdog messages */
       --ok:           #22c55e;   /* green */
       --warn:         #f59e0b;   /* amber */
       --crit:         #ef4444;   /* red */
@@ -96,8 +96,11 @@
     /* Watchdog row */
     .check-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); gap: 12px; }
     .check-row:last-child { border-bottom: none; }
-    .check-name { font-size: 13px; }
-    .check-msg { font-size: 11px; color: var(--text-faint); margin-top: 2px; }
+    .check-name { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; font-weight: 600; }
+    .check-msg { font-size: 12px; opacity: 0.75; margin-top: 2px; }
+    /* Tint check-name with the active tab's accent color */
+    .tab-panel[data-tab="fna"] .check-name { color: #93c5fd; }   /* blue-300 — soft on dark bg */
+    .tab-panel[data-tab="stx"] .check-name { color: #d8b4fe; }   /* purple-300 — soft on dark bg */
 
     /* Backlog row */
     .stat-row { display: flex; justify-content: space-between; align-items: baseline; padding: 4px 0; }
