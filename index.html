@@ -124,7 +124,8 @@
     .deploy-time { font-size: 12px; color: var(--text-dim); margin-top: 6px; }
 
     /* Empty state for panels with no data yet (STX before v2) */
-    .empty-state { padding: 24px 12px; text-align: center; color: var(--text-faint); font-size: 12px; font-style: italic; }
+    .empty-state { padding: 24px 12px; text-align: center; color: var(--text-faint); font-size: 12px; font-style: italic; overflow-wrap: break-word; word-break: break-word; }
+    .empty-state code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-style: normal; font-size: 11px; opacity: 0.85; word-break: break-all; }
 
     /* Footer */
     .footer { margin-top: 16px; padding: 10px; text-align: center; font-size: 11px; color: var(--text-faint); }
@@ -240,8 +241,8 @@
       <div class="panel">
         <h2>STX Watchdog</h2>
         <div class="empty-state">
-          Not yet configured.<br/>
-          See <code>doc/project_status_dashboard_v2_stx_questions.md</code> in the FNA repo.
+          STX-specific watchdog checks pending v2 integration.<br/>
+          Open questions live in the FNA repo's <code>doc/</code> folder.
         </div>
       </div>
     </div>
