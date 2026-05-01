@@ -106,9 +106,27 @@ function fnaWorst(data) {
   return worst;
 }
 
-// Compute worst signal for the STX tab (currently containers only)
+// Compute worst signal for the STX tab (containers + pipeline health + endpoint call health)
 function stxWorst(data) {
-  return containerWorst((data.containers || []).filter(isStxContainer));
+  let worst = containerWorst((data.containers || []).filter(isStxContainer));
+  const p = data.stx_pipeline;
+  if (p && p.available) {
+    const h = p.overall_health_pct || 0;
+    worst = worstOf(worst, h < 70 ? "crit" : h < 85 ? "warn" : "ok");
+  }
+  for (const ep of (data.stx_endpoints || [])) {
+    const errorRate = ep.calls_24h > 0 ? ep.errors_24h / ep.calls_24h : 0;
+    const avgIntervalHours = ep.calls_7d > 0 ? (7 * 24) / ep.calls_7d : Infinity;
+    const lastFetchAgeHours = ep.last_fetched
+      ? (Date.now() - new Date(ep.last_fetched).getTime()) / 3_600_000
+      : Infinity;
+    const overdue = lastFetchAgeHours > avgIntervalHours * 3;
+    const epSig = ep.calls_7d === 0 ? "crit"
+                 : overdue ? "warn"
+                 : errorRate > 0.2 ? "warn" : "ok";
+    worst = worstOf(worst, epSig);
+  }
+  return worst;
 }
 
 // ─── Tab routing ─────────────────────────────────────────────────────────
@@ -376,6 +394,72 @@ function renderWatchdog(data) {
   }).join("");
 }
 
+function renderStxPipeline(data) {
+  const el = $("stx-pipeline");
+  const p = data.stx_pipeline;
+  const endpoints = data.stx_endpoints || [];
+
+  if (!p || !p.available) {
+    el.innerHTML = `<div class="loading">No pipeline data — phd_status.md not found on VPS</div>`;
+    return;
+  }
+
+  const h = p.overall_health_pct || 0;
+  const healthCls = h < 70 ? "crit" : h < 85 ? "warn" : "ok";
+  const marketBadge = p.market === "OPEN"
+    ? `<span style="color:var(--ok);font-weight:600;">● OPEN</span>`
+    : `<span style="color:var(--text-faint);">○ ${escapeHtml(p.market || "—")}</span>`;
+
+  // Per-source endpoint health rows (from fdr_raw_api_data — distinct from PHD stage/section metrics)
+  // Status is cadence-aware: "idle 24h" is normal for weekly jobs (SEC EDGAR, FMP fundamentals, etc.)
+  let endpointHtml;
+  if (!endpoints.length) {
+    endpointHtml = `<div class="loading" style="font-size:12px; font-style:italic;">No endpoint data yet</div>`;
+  } else {
+    endpointHtml = endpoints.map((ep) => {
+      const errorRate = ep.calls_24h > 0 ? ep.errors_24h / ep.calls_24h : 0;
+      // Derive expected fetch interval from 7-day call history
+      const avgIntervalHours = ep.calls_7d > 0 ? (7 * 24) / ep.calls_7d : Infinity;
+      const lastFetchAgeHours = ep.last_fetched
+        ? (Date.now() - new Date(ep.last_fetched).getTime()) / 3_600_000
+        : Infinity;
+      // Overdue = silent for >3× the source's own average interval
+      const overdue = lastFetchAgeHours > avgIntervalHours * 3;
+      const status = ep.calls_7d === 0 ? "crit"          // never active this week
+                   : overdue ? "warn"                      // late by its own cadence
+                   : errorRate > 0.2 ? "warn"              // >20% errors
+                   : "ok";
+      const { className, symbolClass, label } = pillFor(status);
+      const msStr = ep.avg_ms_24h > 0 ? ` · ${ep.avg_ms_24h}ms` : "";
+      const detail = ep.calls_24h > 0
+        ? `${fmtNum(ep.calls_24h)} calls · ${ep.errors_24h} err${msStr}`
+        : `last ${relativeTime(ep.last_fetched)} · ${fmtNum(ep.calls_7d)} calls/7d`;
+      return `
+        <div class="check-row">
+          <div style="flex:1; min-width:0;">
+            <div class="check-name">${escapeHtml(ep.source)}</div>
+            <div class="check-msg">${detail}</div>
+          </div>
+          <span class="pill ${className}"><span class="${symbolClass}"></span>${label}</span>
+        </div>`;
+    }).join("");
+  }
+
+  el.innerHTML = `
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+      <span class="stat-value ${healthCls}" style="font-size:20px;">${h.toFixed(1)}%</span>
+      <span style="font-size:12px; color:var(--text-dim);">PHD · ${marketBadge} · ${fmtNum(p.active_tickers)} tickers</span>
+    </div>
+    <div style="border-top:1px solid var(--border); padding-top:8px;">
+      ${endpointHtml}
+    </div>
+    <div class="stat-row" style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border);">
+      <span class="stat-label">PHD updated</span>
+      <span class="stat-value" style="font-size:12px; color:var(--text-dim);">${relativeTime(p.last_updated)}</span>
+    </div>
+  `;
+}
+
 // ─── Main fetch loop ─────────────────────────────────────────────────────
 
 async function fetchAndRender() {
@@ -396,6 +480,7 @@ async function fetchAndRender() {
     renderIngestion(data);
     renderRss(data);
     renderWatchdog(data);
+    renderStxPipeline(data);
   } catch (err) {
     console.error("Fetch failed:", err);
     const banner = $("banner");
