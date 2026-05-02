@@ -106,7 +106,7 @@ function fnaWorst(data) {
   return worst;
 }
 
-// Compute worst signal for the STX tab (containers + pipeline health + endpoint call health)
+// Compute worst signal for the STX tab
 function stxWorst(data) {
   let worst = containerWorst((data.containers || []).filter(isStxContainer));
   const p = data.stx_pipeline;
@@ -121,10 +121,13 @@ function stxWorst(data) {
       ? (Date.now() - new Date(ep.last_fetched).getTime()) / 3_600_000
       : Infinity;
     const overdue = lastFetchAgeHours > avgIntervalHours * 3;
-    const epSig = ep.calls_7d === 0 ? "crit"
-                 : overdue ? "warn"
-                 : errorRate > 0.2 ? "warn" : "ok";
-    worst = worstOf(worst, epSig);
+    worst = worstOf(worst, ep.calls_7d === 0 ? "crit" : overdue || errorRate > 0.2 ? "warn" : "ok");
+  }
+  for (const h of (data.stx_http || [])) {
+    worst = worstOf(worst, h.status === "ok" ? "ok" : "crit");
+  }
+  for (const proc of (data.stx_processes || [])) {
+    worst = worstOf(worst, proc.status === "ok" ? "ok" : "crit");
   }
   return worst;
 }
@@ -460,6 +463,53 @@ function renderStxPipeline(data) {
   `;
 }
 
+function renderStxHttp(data) {
+  const el = $("stx-http");
+  const checks = data.stx_http || [];
+  if (!checks.length) {
+    el.innerHTML = `<div class="loading">No data — stoxopia_backend_vps not reachable</div>`;
+    return;
+  }
+  el.innerHTML = checks.map((h) => {
+    const { className, symbolClass, label } = pillFor(h.status);
+    const latency = h.latency_ms > 0 ? `${h.latency_ms}ms` : "—";
+    const code = h.http_code && h.http_code !== "000" ? ` · HTTP ${h.http_code}` : "";
+    return `
+      <div class="check-row">
+        <div style="flex:1; min-width:0;">
+          <div class="check-name">${escapeHtml(h.endpoint)}</div>
+          <div class="check-msg">${latency}${code}</div>
+        </div>
+        <span class="pill ${className}"><span class="${symbolClass}"></span>${label}</span>
+      </div>`;
+  }).join("");
+}
+
+function renderStxProcesses(data) {
+  const el = $("stx-processes");
+  const procs = data.stx_processes || [];
+  if (!procs.length) {
+    el.innerHTML = `<div class="loading">No data — stoxopia_pipeline_vps not reachable</div>`;
+    return;
+  }
+  const labels = {
+    celery_worker: "Celery Worker",
+    celery_beat:   "Celery Beat",
+    watchdog:      "Watchdog",
+    v2r_sync:      "V2R Sync",
+  };
+  el.innerHTML = procs.map((p) => {
+    const { className, symbolClass, label } = pillFor(p.status);
+    return `
+      <div class="check-row">
+        <div style="flex:1; min-width:0;">
+          <div class="check-name">${escapeHtml(labels[p.name] || p.name)}</div>
+        </div>
+        <span class="pill ${className}"><span class="${symbolClass}"></span>${label}</span>
+      </div>`;
+  }).join("");
+}
+
 // ─── Main fetch loop ─────────────────────────────────────────────────────
 
 async function fetchAndRender() {
@@ -481,6 +531,8 @@ async function fetchAndRender() {
     renderRss(data);
     renderWatchdog(data);
     renderStxPipeline(data);
+    renderStxHttp(data);
+    renderStxProcesses(data);
   } catch (err) {
     console.error("Fetch failed:", err);
     const banner = $("banner");
