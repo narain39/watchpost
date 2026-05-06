@@ -9,6 +9,7 @@
   "containers": [
     {"name": "news_api", "state": "running", "health": "healthy", "uptime_s": 1245, "created": "2026-04-26T12:42:27Z"},
     {"name": "news_db", "state": "running", "health": "healthy", "uptime_s": 432000, "created": "2026-04-21T14:00:00Z"},
+    {"name": "fna_backup", "state": "running", "health": "none", "uptime_s": 432000, "created": "2026-04-21T14:00:00Z"},
     {"name": "stoxopia_pipeline_vps", "state": "running", "health": "healthy", "uptime_s": 1140, "created": "2026-04-26T12:55:00Z"},
     {"name": "stoxopia_backend_vps", "state": "running", "health": "healthy", "uptime_s": 118800, "created": "2026-04-25T04:15:00Z"},
     {"name": "stoxopia_relay_vps", "state": "running", "health": "healthy", "uptime_s": 870, "created": "2026-04-26T13:00:00Z"},
@@ -65,5 +66,18 @@
     "last_restart_at": "2026-04-26T09:41:52Z",
     "today_count": 0,
     "daily_cap": 4
-  }
+  },
+  "stx_processes": [
+    {"name": "celery_worker",          "label": "Celery Workers",          "status": "ok"},
+    {"name": "celery_beat",            "label": "Celery Beat",             "status": "ok"},
+    {"name": "stx_watchdog",           "label": "STX Watchdog",            "status": "ok"},
+    {"name": "weekly_sync",            "label": "Weekly Sync",             "status": "ok"},
+    {"name": "phd_sync",               "label": "PHD Sync",                "status": "ok"},
+    {"name": "event_sweep",            "label": "Event Sweep",             "status": "ok"},
+    {"name": "post_migration_monitor", "label": "Post-Migration Monitor",  "status": "ok"},
+    {"name": "phase3_backend_monitor", "label": "Phase3 Backend Monitor",  "status": "ok"},
+    {"name": "ce_backfill",            "label": "CE Backfill",             "status": "ok"},
+    {"name": "ang_backfill",           "label": "ANG Backfill",            "status": "ok"},
+    {"name": "v2r_sync",               "label": "V2R Sync",                "status": "crit"}
+  ]
 }

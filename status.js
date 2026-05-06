@@ -492,18 +492,13 @@ function renderStxProcesses(data) {
     el.innerHTML = `<div class="loading">No data — stoxopia_pipeline_vps not reachable</div>`;
     return;
   }
-  const labels = {
-    celery_worker: "Celery Worker",
-    celery_beat:   "Celery Beat",
-    watchdog:      "Watchdog",
-    v2r_sync:      "V2R Sync",
-  };
   el.innerHTML = procs.map((p) => {
     const { className, symbolClass, label } = pillFor(p.status);
+    const displayName = escapeHtml(p.label || p.id || p.name);
     return `
       <div class="check-row">
         <div style="flex:1; min-width:0;">
-          <div class="check-name">${escapeHtml(labels[p.name] || p.name)}</div>
+          <div class="check-name">${displayName}</div>
         </div>
         <span class="pill ${className}"><span class="${symbolClass}"></span>${label}</span>
       </div>`;
