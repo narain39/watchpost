@@ -106,6 +106,23 @@ function fnaWorst(data) {
   return worst;
 }
 
+// Derive endpoint status — cadence-aware but only when calls_24h == 0.
+// If a source had calls today, only the error rate matters (avoids false
+// warns on high-frequency sources where avg interval is seconds).
+function epStatus(ep) {
+  // paused config is advisory — auto-clear if source is actively making calls
+  if (ep.paused && ep.calls_24h === 0) return "paused";
+  const errorRate = ep.calls_24h > 0 ? ep.errors_24h / ep.calls_24h : 0;
+  if (ep.calls_7d === 0) return "crit";
+  if (ep.calls_24h > 0) return errorRate > 0.2 ? "warn" : "ok";
+  // calls_24h == 0 but was active this week — check cadence
+  const avgIntervalHours = (7 * 24) / ep.calls_7d;
+  const ageHours = ep.last_fetched
+    ? (Date.now() - new Date(ep.last_fetched).getTime()) / 3_600_000
+    : Infinity;
+  return ageHours > avgIntervalHours * 3 ? "warn" : "ok";
+}
+
 // Compute worst signal for the STX tab
 function stxWorst(data) {
   let worst = containerWorst((data.containers || []).filter(isStxContainer));
@@ -115,18 +132,15 @@ function stxWorst(data) {
     worst = worstOf(worst, h < 70 ? "crit" : h < 85 ? "warn" : "ok");
   }
   for (const ep of (data.stx_endpoints || [])) {
-    const errorRate = ep.calls_24h > 0 ? ep.errors_24h / ep.calls_24h : 0;
-    const avgIntervalHours = ep.calls_7d > 0 ? (7 * 24) / ep.calls_7d : Infinity;
-    const lastFetchAgeHours = ep.last_fetched
-      ? (Date.now() - new Date(ep.last_fetched).getTime()) / 3_600_000
-      : Infinity;
-    const overdue = lastFetchAgeHours > avgIntervalHours * 3;
-    worst = worstOf(worst, ep.calls_7d === 0 ? "crit" : overdue || errorRate > 0.2 ? "warn" : "ok");
+    const s = epStatus(ep);
+    if (s !== "paused") worst = worstOf(worst, s);
   }
   for (const h of (data.stx_http || [])) {
     worst = worstOf(worst, h.status === "ok" ? "ok" : "crit");
   }
   for (const proc of (data.stx_processes || [])) {
+    // paused config is advisory — if process is running, count it normally
+    if (proc.paused && proc.status !== "ok") continue;
     worst = worstOf(worst, proc.status === "ok" ? "ok" : "crit");
   }
   return worst;
@@ -422,23 +436,17 @@ function renderStxPipeline(data) {
     endpointHtml = `<div class="loading" style="font-size:12px; font-style:italic;">No endpoint data yet</div>`;
   } else {
     endpointHtml = endpoints.map((ep) => {
-      const errorRate = ep.calls_24h > 0 ? ep.errors_24h / ep.calls_24h : 0;
-      // Derive expected fetch interval from 7-day call history
-      const avgIntervalHours = ep.calls_7d > 0 ? (7 * 24) / ep.calls_7d : Infinity;
-      const lastFetchAgeHours = ep.last_fetched
-        ? (Date.now() - new Date(ep.last_fetched).getTime()) / 3_600_000
-        : Infinity;
-      // Overdue = silent for >3× the source's own average interval
-      const overdue = lastFetchAgeHours > avgIntervalHours * 3;
-      const status = ep.calls_7d === 0 ? "crit"          // never active this week
-                   : overdue ? "warn"                      // late by its own cadence
-                   : errorRate > 0.2 ? "warn"              // >20% errors
-                   : "ok";
-      const { className, symbolClass, label } = pillFor(status);
+      const status = epStatus(ep);
+      const { className, symbolClass, label } = status === "paused"
+        ? { className: "dim", symbolClass: "symbol-dim", label: "paused" }
+        : pillFor(status);
       const msStr = ep.avg_ms_24h > 0 ? ` · ${ep.avg_ms_24h}ms` : "";
-      const detail = ep.calls_24h > 0
-        ? `${fmtNum(ep.calls_24h)} calls · ${ep.errors_24h} err${msStr}`
-        : `last ${relativeTime(ep.last_fetched)} · ${fmtNum(ep.calls_7d)} calls/7d`;
+      // use derived status (not raw paused flag) so detail matches pill if source re-activates
+      const detail = status === "paused"
+        ? `last ${relativeTime(ep.last_fetched)}`
+        : ep.calls_24h > 0
+          ? `${fmtNum(ep.calls_24h)} calls · ${ep.errors_24h} err${msStr}`
+          : `last ${relativeTime(ep.last_fetched)} · ${fmtNum(ep.calls_7d)} calls/7d`;
       return `
         <div class="check-row">
           <div style="flex:1; min-width:0;">
@@ -495,7 +503,10 @@ function renderStxProcesses(data) {
     return;
   }
   el.innerHTML = procs.map((p) => {
-    const { className, symbolClass, label } = pillFor(p.status);
+    // paused is advisory — if process is running, show its real status
+    const { className, symbolClass, label } = (p.paused && p.status !== "ok")
+      ? { className: "dim", symbolClass: "symbol-dim", label: "paused" }
+      : pillFor(p.status);
     const displayName = escapeHtml(p.label || p.id || p.name);
     return `
       <div class="check-row">
