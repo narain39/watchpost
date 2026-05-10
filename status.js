@@ -352,6 +352,7 @@ function renderRss(data) {
   const r = data.rss_health || {};
   if (!r.available) { el.innerHTML = `<div class="loading">No healthcheck report today</div>`; return; }
   const critList = (r.critical_feeds || []).map((f) => `<li>${escapeHtml(f)}</li>`).join("");
+  const warnList = (r.warning_feeds || []).map((f) => `<li>${escapeHtml(f)}</li>`).join("");
   const lastCheck = relativeTime(r.last_check_at);
   el.innerHTML = `
     <div class="stat-row">
@@ -366,11 +367,12 @@ function renderRss(data) {
       <span class="stat-label">Warning</span>
       <span class="stat-value ${r.warning > 0 ? 'warn' : ''}">${fmtNum(r.warning)}</span>
     </div>
+    ${warnList ? `<ul style="margin-top:4px; margin-bottom:6px; padding-left:18px; font-size:12px; color:var(--warn);">${warnList}</ul>` : ""}
     <div class="stat-row">
       <span class="stat-label">Critical</span>
       <span class="stat-value ${r.critical > 0 ? 'crit' : ''}">${fmtNum(r.critical)}</span>
     </div>
-    ${critList ? `<ul style="margin-top:8px; padding-left:18px; font-size:12px; color:var(--crit);">${critList}</ul>` : ""}
+    ${critList ? `<ul style="margin-top:4px; margin-bottom:6px; padding-left:18px; font-size:12px; color:var(--crit);">${critList}</ul>` : ""}
     <div class="stat-row" style="margin-top:8px; padding-top:8px; border-top: 1px solid var(--border);">
       <span class="stat-label">Last check</span>
       <span class="stat-value" style="font-size:12px; color:var(--text-dim);">${lastCheck}</span>
