@@ -1,17 +1,16 @@
-// Watchpost — fetches the public Gist and renders Stoxopia + FNA ops state.
+// Watchpost — fetches the public Gist and renders FNA + STX + SPG ops state.
 //
-// Layout (post 2026-04-27 redesign):
+// Layout:
 //   ┌────────────────────────────────────┐
-//   │ Banner (overall, both apps)        │
+//   │ Banner (overall, all apps)         │
 //   ├────────────────────────────────────┤
 //   │ Shared strip: VPS · auto-restart · │
 //   │ collector freshness                │
 //   ├────────────────────────────────────┤
-//   │ Tabs: [FNA] [STX]                  │
+//   │ Tabs: [FNA] [STX] [SPG]            │
 //   ├────────────────────────────────────┤
-//   │ Tab content (FNA panels OR STX     │
-//   │ panels — switched via #fna/#stx    │
-//   │ URL hash)                          │
+//   │ Tab content — switched via         │
+//   │ #fna/#stx/#spg URL hash            │
 //   └────────────────────────────────────┘
 
 // ─── Config ──────────────────────────────────────────────────────────────
@@ -76,8 +75,9 @@ function escapeHtml(s) {
 }
 
 // Partition containers by name prefix
-function isFnaContainer(c) { return c.name && c.name.startsWith("news_"); }
+function isFnaContainer(c) { return c.name && (c.name.startsWith("news_") || c.name === "fna_backup"); }
 function isStxContainer(c) { return c.name && c.name.startsWith("stoxopia_"); }
+function isSpgContainer(c) { return c.name && c.name.startsWith("sharpignal-"); }
 
 // Compute the worst signal in a list of containers (for tab dots)
 function containerWorst(containers) {
@@ -146,11 +146,24 @@ function stxWorst(data) {
   return worst;
 }
 
+// Compute worst signal for the SPG tab (containers + http + processes)
+function spgWorst(data) {
+  let worst = containerWorst((data.containers || []).filter(isSpgContainer));
+  for (const h of (data.spg_http || [])) {
+    worst = worstOf(worst, h.status === "ok" ? "ok" : "crit");
+  }
+  for (const proc of (data.spg_processes || [])) {
+    if (proc.paused && proc.status !== "ok") continue;
+    worst = worstOf(worst, proc.status === "ok" ? "ok" : "crit");
+  }
+  return worst;
+}
+
 // ─── Tab routing ─────────────────────────────────────────────────────────
 
 function getActiveTab() {
   const hash = (window.location.hash || "").replace("#", "");
-  return ["fna", "stx"].includes(hash) ? hash : "fna";
+  return ["fna", "stx", "spg"].includes(hash) ? hash : "fna";
 }
 
 function setActiveTab(name) {
@@ -188,6 +201,7 @@ function renderBanner(data) {
   } else {
     overall = worstOf(overall, fnaWorst(data));
     overall = worstOf(overall, stxWorst(data));
+    overall = worstOf(overall, spgWorst(data));
   }
 
   banner.className = `banner ${overall}`;
@@ -206,10 +220,9 @@ function renderBanner(data) {
 }
 
 function renderTabDots(data) {
-  const fnaDot = $("tab-dot-fna");
-  const stxDot = $("tab-dot-stx");
-  fnaDot.className = `tab-dot ${fnaWorst(data)}`;
-  stxDot.className = `tab-dot ${stxWorst(data)}`;
+  $("tab-dot-fna").className = `tab-dot ${fnaWorst(data)}`;
+  $("tab-dot-stx").className = `tab-dot ${stxWorst(data)}`;
+  $("tab-dot-spg").className = `tab-dot ${spgWorst(data)}`;
 }
 
 function renderShared(data) {
@@ -276,6 +289,10 @@ function renderStxContainers(data) {
   renderContainerList("stx-containers", (data.containers || []).filter(isStxContainer));
 }
 
+function renderSpgContainers(data) {
+  renderContainerList("spg-containers", (data.containers || []).filter(isSpgContainer));
+}
+
 function renderDeployBlock(elId, app) {
   const el = $(elId);
   if (!app || !app.current_sha) {
@@ -295,6 +312,7 @@ function renderDeploy(data) {
   const apps = d.current_sha ? { fna: d } : d;
   renderDeployBlock("fna-deploy", apps.fna);
   renderDeployBlock("stx-deploy", apps.stx);
+  renderDeployBlock("spg-deploy", apps.spg);
 }
 
 function renderBacklogs(data) {
@@ -518,6 +536,50 @@ function renderStxProcesses(data) {
   }).join("");
 }
 
+function renderSpgHttp(data) {
+  const el = $("spg-http");
+  const checks = data.spg_http || [];
+  if (!checks.length) {
+    el.innerHTML = `<div class="loading">No data — sharpignal-api not reachable</div>`;
+    return;
+  }
+  el.innerHTML = checks.map((h) => {
+    const { className, symbolClass, label } = pillFor(h.status);
+    const latency = h.latency_ms > 0 ? `${h.latency_ms}ms` : "—";
+    const code = h.http_code && h.http_code !== "000" ? ` · HTTP ${h.http_code}` : "";
+    return `
+      <div class="check-row">
+        <div style="flex:1; min-width:0;">
+          <div class="check-name">${escapeHtml(h.endpoint)}</div>
+          <div class="check-msg">${latency}${code}</div>
+        </div>
+        <span class="pill ${className}"><span class="${symbolClass}"></span>${label}</span>
+      </div>`;
+  }).join("");
+}
+
+function renderSpgProcesses(data) {
+  const el = $("spg-processes");
+  const procs = data.spg_processes || [];
+  if (!procs.length) {
+    el.innerHTML = `<div class="loading">No data — SPG monitoring not yet enabled</div>`;
+    return;
+  }
+  el.innerHTML = procs.map((p) => {
+    const { className, symbolClass, label } = (p.paused && p.status !== "ok")
+      ? { className: "dim", symbolClass: "symbol-dim", label: "paused" }
+      : pillFor(p.status);
+    const displayName = escapeHtml(p.label || p.id || p.name);
+    return `
+      <div class="check-row">
+        <div style="flex:1; min-width:0;">
+          <div class="check-name">${displayName}</div>
+        </div>
+        <span class="pill ${className}"><span class="${symbolClass}"></span>${label}</span>
+      </div>`;
+  }).join("");
+}
+
 // ─── Main fetch loop ─────────────────────────────────────────────────────
 
 async function fetchAndRender() {
@@ -541,6 +603,9 @@ async function fetchAndRender() {
     renderStxPipeline(data);
     renderStxHttp(data);
     renderStxProcesses(data);
+    renderSpgContainers(data);
+    renderSpgHttp(data);
+    renderSpgProcesses(data);
   } catch (err) {
     console.error("Fetch failed:", err);
     const banner = $("banner");
