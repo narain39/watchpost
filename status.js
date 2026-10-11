@@ -639,17 +639,22 @@ function renderContainerResources(elId, filterFn, data) {
   }
 
   // Header row
-  let html = '<div class="res-row" style="border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:2px;"><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text);opacity:0.5;">Container</span><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text);opacity:0.5;">Memory</span><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text);opacity:0.5;text-align:right;">Mem %</span><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text);opacity:0.5;text-align:right;">CPU</span></div>';
+  const hdr = 'font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text);opacity:0.5;';
+  let html = `<div class="res-row" style="border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:2px;"><span style="${hdr}">Container</span><span style="${hdr}">Memory</span><span style="${hdr}text-align:right;">Mem %</span><span style="${hdr}text-align:right;">CPU</span><span style="${hdr}text-align:right;">Used / Limit</span><span style="${hdr}text-align:right;">PIDs</span></div>`;
 
   for (const [name, stats] of containers) {
     const sev = memSeverity(stats.mem_pct);
     const shortName = name.replace("stoxopia_", "").replace("_vps", "").replace("sharpignal-", "spg-");
+    const usage = stats.mem_usage || "—";
+    const pids = stats.pids != null ? stats.pids : "—";
     html += `
       <div class="res-row">
         <span class="res-name">${escapeHtml(shortName)}</span>
         <div class="res-bar"><div class="res-fill ${sev}" style="width:${Math.min(stats.mem_pct, 100).toFixed(1)}%"></div></div>
         <span class="res-pct ${sev}">${stats.mem_pct.toFixed(1)}%</span>
         <span class="res-cpu">${stats.cpu_pct.toFixed(1)}%</span>
+        <span class="res-usage">${escapeHtml(usage)}</span>
+        <span class="res-pids">${pids}</span>
       </div>`;
   }
 
