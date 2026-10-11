@@ -124,7 +124,7 @@
     .bar-value { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; text-align: right; color: var(--text-dim); }
 
     /* Resource utilization bar — compact version for container resources */
-    .res-row { display: grid; grid-template-columns: 100px 1fr 55px 55px 90px 40px; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--border); }
+    .res-row { display: grid; grid-template-columns: 120px 1fr 55px 55px 100px; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--border); }
     .res-row:last-child { border-bottom: none; }
     .res-name { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .res-bar { height: 6px; background: var(--panel-2); border-radius: 3px; overflow: hidden; }
@@ -138,7 +138,7 @@
     .res-pct.crit { color: var(--crit); }
     .res-cpu { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11px; text-align: right; color: var(--text-dim); font-variant-numeric: tabular-nums; }
     .res-usage { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11px; text-align: right; color: var(--text-dim); white-space: nowrap; }
-    .res-pids { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11px; text-align: right; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+    .res-pids { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 10px; color: var(--text-dim); opacity: 0.5; margin-left: 2px; }
 
     /* Pipeline process rows */
     .proc-row { display: grid; grid-template-columns: 1fr 55px 70px; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
