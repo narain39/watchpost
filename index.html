@@ -74,7 +74,8 @@
     .tab-panel[data-tab="spg"] { border-top: 3px solid var(--accent-spg); margin-top: -1px; padding: 14px 12px 12px 12px; background: rgba(20,184,166,0.04); }
 
     /* Grid layout */
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
     .panel { background: var(--panel); border-radius: 8px; padding: 14px 16px; border: 1px solid var(--border); }
     .panel h2 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text); margin-bottom: 10px; opacity: 0.7; }
     .panel.span-2 { grid-column: span 2; }
@@ -164,6 +165,7 @@
     /* Responsive */
     @media (max-width: 700px) {
       .panel.span-2 { grid-column: span 1; }
+      .grid-2 { grid-template-columns: 1fr; }
       .banner { flex-direction: column; align-items: flex-start; }
       .banner-meta { text-align: left; }
     }
@@ -232,112 +234,101 @@
 
   <!-- FNA tab content -->
   <div class="tab-panel" data-tab="fna" role="tabpanel">
-    <div class="grid">
-      <div class="panel span-2">
+    <div class="grid-2">
+      <div class="panel">
         <h2>FNA Containers</h2>
         <div id="fna-containers" class="loading">Loading…</div>
       </div>
-
-      <div class="panel span-2">
+      <div class="panel">
         <h2>FNA Resources</h2>
         <div id="fna-resources" class="loading">Loading…</div>
       </div>
-
       <div class="panel">
         <h2>FNA Deploy</h2>
         <div id="fna-deploy" class="loading">Loading…</div>
       </div>
-
+      <div class="panel">
+        <h2>FNA Watchdog</h2>
+        <div id="watchdog" class="loading">Loading…</div>
+      </div>
+    </div>
+    <div class="grid">
       <div class="panel">
         <h2>Backlogs</h2>
         <div id="backlogs" class="loading">Loading…</div>
       </div>
-
       <div class="panel">
         <h2>API Budgets</h2>
         <div id="budgets" class="loading">Loading…</div>
       </div>
-
       <div class="panel">
         <h2>Ingestion (24h)</h2>
         <div id="ingestion" class="loading">Loading…</div>
       </div>
-
       <div class="panel">
         <h2>RSS Feed Health</h2>
         <div id="rss" class="loading">Loading…</div>
-      </div>
-
-      <div class="panel span-2">
-        <h2>FNA Watchdog</h2>
-        <div id="watchdog" class="loading">Loading…</div>
       </div>
     </div>
   </div>
 
   <!-- STX tab content -->
   <div class="tab-panel" data-tab="stx" role="tabpanel">
-    <div class="grid">
-      <div class="panel span-2">
+    <div class="grid-2">
+      <div class="panel">
         <h2>STX Containers</h2>
         <div id="stx-containers" class="loading">Loading…</div>
       </div>
-
-      <div class="panel span-2">
+      <div class="panel">
         <h2>STX Resources</h2>
         <div id="stx-resources" class="loading">Loading…</div>
       </div>
-
-      <div class="panel span-2">
+      <div class="panel">
         <h2>Pipeline Processes</h2>
         <div id="stx-pipeline-procs" class="loading">Loading…</div>
       </div>
-
+      <div class="panel">
+        <h2>STX Pipeline</h2>
+        <div id="stx-pipeline" class="loading">Loading…</div>
+      </div>
+    </div>
+    <div class="grid">
       <div class="panel">
         <h2>STX Deploy</h2>
         <div id="stx-deploy" class="loading">Loading…</div>
       </div>
-
       <div class="panel">
         <h2>STX API Health</h2>
         <div id="stx-http" class="loading">Loading…</div>
       </div>
-
       <div class="panel">
         <h2>STX Processes</h2>
         <div id="stx-processes" class="loading">Loading…</div>
-      </div>
-
-      <div class="panel span-2">
-        <h2>STX Pipeline</h2>
-        <div id="stx-pipeline" class="loading">Loading…</div>
       </div>
     </div>
   </div>
 
   <!-- SPG tab content -->
   <div class="tab-panel" data-tab="spg" role="tabpanel">
-    <div class="grid">
-      <div class="panel span-2">
+    <div class="grid-2">
+      <div class="panel">
         <h2>SPG Containers</h2>
         <div id="spg-containers" class="loading">Loading…</div>
       </div>
-
-      <div class="panel span-2">
+      <div class="panel">
         <h2>SPG Resources</h2>
         <div id="spg-resources" class="loading">Loading…</div>
       </div>
-
+    </div>
+    <div class="grid">
       <div class="panel">
         <h2>SPG Deploy</h2>
         <div id="spg-deploy" class="loading">Loading…</div>
       </div>
-
       <div class="panel">
         <h2>SPG API Health</h2>
         <div id="spg-http" class="loading">Loading…</div>
       </div>
-
       <div class="panel">
         <h2>SPG Processes</h2>
         <div id="spg-processes" class="loading">Loading…</div>
