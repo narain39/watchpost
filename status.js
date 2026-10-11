@@ -153,6 +153,8 @@ function stxWorst(data) {
   let worst = containerWorst((data.containers || []).filter(isStxContainer));
   // Watchdog escalation = self-healing suspended for that process — always crit
   if ((data.stx_escalations || []).length) worst = "crit";
+  // Broker queue depth / Redis evictions (Fix17c)
+  worst = worstOf(worst, brokerSeverity(data.broker));
   const p = data.stx_pipeline;
   if (p && p.available) {
     const h = p.overall_health_pct || 0;
@@ -714,6 +716,47 @@ function renderPipelineProcesses(data) {
   el.innerHTML = html;
 }
 
+// Fix17c: Celery broker health — queue depths + Redis evictions.
+// Deep queues add zero throughput (tasks re-query eligibility at execution);
+// they only pressure Redis until allkeys-lru silently evicts data.
+function brokerSeverity(broker) {
+  if (!broker) return "ok";
+  let worst = "ok";
+  for (const depth of Object.values(broker.queues || {})) {
+    if (depth > 10000) worst = "crit";
+    else if (depth > 2000) worst = worstOf(worst, "warn");
+  }
+  if ((broker.evictions_delta || 0) > 0) worst = "crit";
+  return worst;
+}
+
+function renderBroker(data) {
+  const el = $("stx-broker");
+  if (!el) return;
+  const b = data.broker;
+  if (!b || !b.queues || !Object.keys(b.queues).length) {
+    el.innerHTML = "";
+    return;
+  }
+  const qParts = Object.entries(b.queues).map(([q, depth]) => {
+    const color = depth > 10000 ? "var(--crit)" : depth > 2000 ? "var(--warn)" : "var(--text-dim)";
+    return `<span style="white-space:nowrap;">${escapeHtml(q)}: <strong style="color:${color};font-family:ui-monospace,monospace;">${depth.toLocaleString()}</strong></span>`;
+  });
+  let redisPart = "";
+  if (b.redis_used_mb != null && b.redis_max_mb) {
+    redisPart = `<span style="white-space:nowrap;">redis: <strong style="font-family:ui-monospace,monospace;">${b.redis_used_mb}M / ${b.redis_max_mb}M</strong></span>`;
+  }
+  let evicPart = "";
+  if ((b.evictions_delta || 0) > 0) {
+    evicPart = `<span style="color:var(--crit);font-weight:600;white-space:nowrap;">⚠ EVICTING (+${b.evictions_delta.toLocaleString()} keys)</span>`;
+  }
+  el.innerHTML = `
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text);opacity:0.5;margin-bottom:4px;">Broker Queues</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--text-dim);">
+      ${qParts.join("")} ${redisPart} ${evicPart}
+    </div>`;
+}
+
 function renderHostResources(data) {
   const res = data.resources;
   if (!res || !res.host) return;
@@ -772,6 +815,7 @@ async function fetchAndRender() {
     renderContainerResources("fna-resources", isFnaContainer, data);
     renderContainerResources("spg-resources", isSpgContainer, data);
     renderPipelineProcesses(data);
+    renderBroker(data);
   } catch (err) {
     console.error("Fetch failed:", err);
     const banner = $("banner");
