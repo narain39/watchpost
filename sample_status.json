@@ -67,6 +67,16 @@
     "today_count": 0,
     "daily_cap": 4
   },
+  "stx_escalations": [
+    {"process": "celery_worker", "reason": "3 watchdog actions in 15 min (last: dedup kill+restart) — suspending intervention, likely watchdog/code defect", "escalated_at": "2026-04-26T12:50:00", "backoff_until": "2026-04-26T13:50:00"}
+  ],
+  "stx_auto_restart": {
+    "consecutive_critical": 2,
+    "threshold": 3,
+    "last_restart_at": "2026-04-26T08:30:00Z",
+    "today_count": 1,
+    "daily_cap": 4
+  },
   "stx_processes": [
     {"name": "celery_worker",          "label": "Celery Workers",          "status": "ok"},
     {"name": "celery_beat",            "label": "Celery Beat",             "status": "ok"},

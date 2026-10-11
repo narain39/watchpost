@@ -53,9 +53,14 @@ function fmtNum(n) {
   return n.toLocaleString();
 }
 
-function memSeverity(pct) {
-  if (pct >= 90) return "crit";
-  if (pct >= 75) return "warn";
+// DB containers (postgres/redis) run high memory by design (shared_buffers,
+// page cache) — only alarm near the actual cap. Mirrors monitor.py's banner.
+function memSeverity(pct, name) {
+  const isDb = name && (name.includes("postgres") || name.includes("redis") || name.includes("db"));
+  const critAt = isDb ? 95 : 90;
+  const warnAt = isDb ? 85 : 75;
+  if (pct >= critAt) return "crit";
+  if (pct >= warnAt) return "warn";
   return "ok";
 }
 
@@ -119,7 +124,7 @@ function fnaWorst(data) {
   if (res && res.containers) {
     for (const [name, stats] of Object.entries(res.containers)) {
       if (isFnaContainer({name})) {
-        worst = worstOf(worst, memSeverity(stats.mem_pct));
+        worst = worstOf(worst, memSeverity(stats.mem_pct, name));
       }
     }
   }
@@ -146,6 +151,8 @@ function epStatus(ep) {
 // Compute worst signal for the STX tab
 function stxWorst(data) {
   let worst = containerWorst((data.containers || []).filter(isStxContainer));
+  // Watchdog escalation = self-healing suspended for that process — always crit
+  if ((data.stx_escalations || []).length) worst = "crit";
   const p = data.stx_pipeline;
   if (p && p.available) {
     const h = p.overall_health_pct || 0;
@@ -168,7 +175,7 @@ function stxWorst(data) {
   if (res && res.containers) {
     for (const [name, stats] of Object.entries(res.containers)) {
       if (isStxContainer({name})) {
-        worst = worstOf(worst, memSeverity(stats.mem_pct));
+        worst = worstOf(worst, memSeverity(stats.mem_pct, name));
       }
     }
   }
@@ -190,7 +197,7 @@ function spgWorst(data) {
   if (res && res.containers) {
     for (const [name, stats] of Object.entries(res.containers)) {
       if (isSpgContainer({name})) {
-        worst = worstOf(worst, memSeverity(stats.mem_pct));
+        worst = worstOf(worst, memSeverity(stats.mem_pct, name));
       }
     }
   }
@@ -269,13 +276,20 @@ function renderShared(data) {
   $("shared-vps").textContent = uptimeStr(v.uptime_seconds);
   $("shared-vps-sub").textContent = v.load_avg_1m !== undefined ? `Load: ${v.load_avg_1m}` : "—";
 
-  // Auto-restart — symmetric per-app display (FNA tracked, STX not configured yet)
+  // Auto-restart — symmetric per-app display (FNA via host_health_check.sh,
+  // STX via vps-monitor stx_auto_restart_check)
   const a = data.auto_restart || {};
   const fnaToday = a.today_count || 0;
   const fnaCap = a.daily_cap || 4;
-  $("shared-autorestart").innerHTML = `FNA: <strong>${fnaToday}/${fnaCap}</strong> · STX: <span style="color:var(--text-faint);">not configured</span>`;
-  const lastRestart = a.last_restart_at ? `FNA last restart ${relativeTime(a.last_restart_at)}` : "FNA: no restarts on record";
-  $("shared-autorestart-sub").textContent = lastRestart;
+  const sa = data.stx_auto_restart;
+  const stxPart = sa
+    ? `STX: <strong>${sa.today_count || 0}/${sa.daily_cap || 4}</strong>`
+    : `STX: <span style="color:var(--text-faint);">not configured</span>`;
+  $("shared-autorestart").innerHTML = `FNA: <strong>${fnaToday}/${fnaCap}</strong> · ${stxPart}`;
+  const parts = [];
+  parts.push(a.last_restart_at ? `FNA last ${relativeTime(a.last_restart_at)}` : "FNA: none on record");
+  if (sa) parts.push(sa.last_restart_at ? `STX last ${relativeTime(sa.last_restart_at)}` : "STX: none on record");
+  $("shared-autorestart-sub").textContent = parts.join(" · ");
 
   // Collector freshness — two timestamps tell different stories:
   //   generated_at      → "is the collector alive?" (always recent in healthy state)
@@ -558,7 +572,16 @@ function renderStxProcesses(data) {
     el.innerHTML = `<div class="loading">No data — stoxopia_pipeline_vps not reachable</div>`;
     return;
   }
-  el.innerHTML = procs.map((p) => {
+  // Fix17: active watchdog escalations — self-healing suspended, human needed
+  const escRows = (data.stx_escalations || []).map((e) => `
+      <div class="check-row" style="background:rgba(239,68,68,0.08);border-radius:6px;padding:8px 10px;">
+        <div style="flex:1; min-width:0;">
+          <div class="check-name" style="color:var(--crit);">⛔ ESCALATED: ${escapeHtml(e.process)}</div>
+          <div class="check-msg">${escapeHtml(e.reason)} — since ${relativeTime(e.escalated_at)}</div>
+        </div>
+        <span class="pill crit"><span class="symbol-crit"></span>escalated</span>
+      </div>`).join("");
+  el.innerHTML = escRows + procs.map((p) => {
     // paused is advisory — if process is running, show its real status
     const { className, symbolClass, label } = (p.paused && p.status !== "ok")
       ? { className: "dim", symbolClass: "symbol-dim", label: "paused" }
@@ -650,7 +673,7 @@ function renderContainerResources(elId, filterFn, data) {
   let html = `<div class="res-row" style="border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:2px;"><span style="${hdr}">Container</span><span style="${hdr}">Memory</span><span style="${hdr}text-align:right;">Mem %</span><span style="${hdr}text-align:right;">CPU</span><span style="${hdr}text-align:right;">Used / Limit</span></div>`;
 
   for (const [name, stats] of containers) {
-    const sev = memSeverity(stats.mem_pct);
+    const sev = memSeverity(stats.mem_pct, name);
     const shortName = name.replace("stoxopia_", "").replace("_vps", "").replace("sharpignal-", "spg-");
     const usage = fmtMemUsage(stats.mem_usage);
     const pids = stats.pids != null ? `<span class="res-pids">(${stats.pids})</span>` : "";
