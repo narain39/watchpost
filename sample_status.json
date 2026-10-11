@@ -79,5 +79,52 @@
     {"name": "ce_backfill",            "label": "CE Backfill",             "status": "ok"},
     {"name": "ang_backfill",           "label": "ANG Backfill",            "status": "ok"},
     {"name": "v2r_sync",               "label": "V2R Sync",                "status": "crit"}
-  ]
+  ],
+  "resources": {
+    "host": {
+      "ram_total_mb": 16384,
+      "ram_used_mb": 8396,
+      "ram_available_mb": 7577,
+      "swap_total_mb": 2355,
+      "swap_used_mb": 1536,
+      "disk_total_gb": 300,
+      "disk_used_gb": 159,
+      "disk_pct": 56
+    },
+    "containers": {
+      "stoxopia_pipeline_vps": {"cpu_pct": 120.56, "mem_pct": 49.45, "mem_usage": "2.47GiB / 5GiB", "pids": 84},
+      "stoxopia_postgres_vps": {"cpu_pct": 17.17, "mem_pct": 80.76, "mem_usage": "3.23GiB / 4GiB", "pids": 36},
+      "stoxopia_redis_vps": {"cpu_pct": 3.81, "mem_pct": 72.69, "mem_usage": "372MiB / 512MiB", "pids": 7},
+      "stoxopia_backend_vps": {"cpu_pct": 0.24, "mem_pct": 13.71, "mem_usage": "140MiB / 1GiB", "pids": 9},
+      "stoxopia_chat_vps": {"cpu_pct": 0.20, "mem_pct": 6.67, "mem_usage": "68MiB / 1GiB", "pids": 6},
+      "stoxopia_relay_vps": {"cpu_pct": 8.66, "mem_pct": 19.05, "mem_usage": "49MiB / 256MiB", "pids": 2},
+      "news_api": {"cpu_pct": 0.28, "mem_pct": 3.31, "mem_usage": "530MiB / 15.61GiB", "pids": 29},
+      "news_db": {"cpu_pct": 0.02, "mem_pct": 66.40, "mem_usage": "1.99GiB / 3GiB", "pids": 17},
+      "fna_backup": {"cpu_pct": 0.02, "mem_pct": 17.96, "mem_usage": "368MiB / 2GiB", "pids": 17},
+      "sharpignal-db": {"cpu_pct": 0.00, "mem_pct": 0.54, "mem_usage": "86MiB / 15.61GiB", "pids": 6},
+      "sharpignal-worker": {"cpu_pct": 0.06, "mem_pct": 0.49, "mem_usage": "78MiB / 15.61GiB", "pids": 2},
+      "sharpignal-api": {"cpu_pct": 0.18, "mem_pct": 0.37, "mem_usage": "59MiB / 15.61GiB", "pids": 5},
+      "sharpignal-beat": {"cpu_pct": 0.00, "mem_pct": 0.31, "mem_usage": "50MiB / 15.61GiB", "pids": 6},
+      "sharpignal-redis": {"cpu_pct": 0.81, "mem_pct": 0.04, "mem_usage": "6MiB / 15.61GiB", "pids": 6},
+      "sharpignal-signal-api": {"cpu_pct": 0.00, "mem_pct": 0.17, "mem_usage": "27MiB / 15.61GiB", "pids": 12},
+      "sharpignal-worker-digest": {"cpu_pct": 0.06, "mem_pct": 0.51, "mem_usage": "82MiB / 15.61GiB", "pids": 2}
+    },
+    "pipeline_processes": [
+      {"name": "hf_upload", "cpu_pct": 87.8, "rss_mb": 938},
+      {"name": "celery-fork-1", "cpu_pct": 1.7, "rss_mb": 262},
+      {"name": "celery-fork-2", "cpu_pct": 3.7, "rss_mb": 252},
+      {"name": "celery-fork-3", "cpu_pct": 2.2, "rss_mb": 245},
+      {"name": "celery-fork-4", "cpu_pct": 1.2, "rss_mb": 230},
+      {"name": "celery-fork-5", "cpu_pct": 1.8, "rss_mb": 230},
+      {"name": "celery-fork-6", "cpu_pct": 1.4, "rss_mb": 220},
+      {"name": "celery-master", "cpu_pct": 0.6, "rss_mb": 112},
+      {"name": "ang_backfill", "cpu_pct": 2.0, "rss_mb": 142},
+      {"name": "ce_backfill", "cpu_pct": 5.3, "rss_mb": 126},
+      {"name": "celery-beat", "cpu_pct": 0.3, "rss_mb": 111},
+      {"name": "event_sweep", "cpu_pct": 4.1, "rss_mb": 98},
+      {"name": "polygon_bars", "cpu_pct": 0.7, "rss_mb": 92},
+      {"name": "polygon_corporate", "cpu_pct": 0.2, "rss_mb": 80},
+      {"name": "watchdog", "cpu_pct": 0.0, "rss_mb": 27}
+    ]
+  }
 }

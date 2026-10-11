@@ -53,6 +53,17 @@ function fmtNum(n) {
   return n.toLocaleString();
 }
 
+function memSeverity(pct) {
+  if (pct >= 90) return "crit";
+  if (pct >= 75) return "warn";
+  return "ok";
+}
+
+function fmtMb(mb) {
+  if (mb >= 1024) return (mb / 1024).toFixed(1) + " GiB";
+  return mb + " MiB";
+}
+
 function pillFor(status) {
   switch (status) {
     case "ok": case "running": case "healthy":
@@ -103,6 +114,15 @@ function fnaWorst(data) {
   }
   if (data.rss_health?.critical > 0) worst = worstOf(worst, "crit");
   if (data.rss_health?.warning > 0) worst = worstOf(worst, "warn");
+  // Check container memory utilization
+  const res = data.resources;
+  if (res && res.containers) {
+    for (const [name, stats] of Object.entries(res.containers)) {
+      if (isFnaContainer({name})) {
+        worst = worstOf(worst, memSeverity(stats.mem_pct));
+      }
+    }
+  }
   return worst;
 }
 
@@ -143,6 +163,15 @@ function stxWorst(data) {
     if (proc.paused && proc.status !== "ok") continue;
     worst = worstOf(worst, proc.status === "ok" ? "ok" : "crit");
   }
+  // Check container memory utilization
+  const res = data.resources;
+  if (res && res.containers) {
+    for (const [name, stats] of Object.entries(res.containers)) {
+      if (isStxContainer({name})) {
+        worst = worstOf(worst, memSeverity(stats.mem_pct));
+      }
+    }
+  }
   return worst;
 }
 
@@ -155,6 +184,15 @@ function spgWorst(data) {
   for (const proc of (data.spg_processes || [])) {
     if (proc.paused && proc.status !== "ok") continue;
     worst = worstOf(worst, proc.status === "ok" ? "ok" : "crit");
+  }
+  // Check container memory utilization
+  const res = data.resources;
+  if (res && res.containers) {
+    for (const [name, stats] of Object.entries(res.containers)) {
+      if (isSpgContainer({name})) {
+        worst = worstOf(worst, memSeverity(stats.mem_pct));
+      }
+    }
   }
   return worst;
 }
@@ -580,6 +618,95 @@ function renderSpgProcesses(data) {
   }).join("");
 }
 
+// ─── Resource renderers ─────────────────────────────────────────────────
+
+function renderContainerResources(elId, filterFn, data) {
+  const el = $(elId);
+  const res = data.resources;
+  if (!res || !res.containers) {
+    el.innerHTML = '<div class="loading">No resource data</div>';
+    return;
+  }
+
+  // Get containers for this app, sorted by mem_pct descending
+  const containers = Object.entries(res.containers)
+    .filter(([name]) => filterFn({name}))
+    .sort((a, b) => b[1].mem_pct - a[1].mem_pct);
+
+  if (!containers.length) {
+    el.innerHTML = '<div class="loading">No resource data for this app</div>';
+    return;
+  }
+
+  // Header row
+  let html = '<div class="res-row" style="border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:2px;"><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text);opacity:0.5;">Container</span><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text);opacity:0.5;">Memory</span><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text);opacity:0.5;text-align:right;">Mem %</span><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text);opacity:0.5;text-align:right;">CPU</span></div>';
+
+  for (const [name, stats] of containers) {
+    const sev = memSeverity(stats.mem_pct);
+    const shortName = name.replace("stoxopia_", "").replace("_vps", "").replace("sharpignal-", "spg-");
+    html += `
+      <div class="res-row">
+        <span class="res-name">${escapeHtml(shortName)}</span>
+        <div class="res-bar"><div class="res-fill ${sev}" style="width:${Math.min(stats.mem_pct, 100).toFixed(1)}%"></div></div>
+        <span class="res-pct ${sev}">${stats.mem_pct.toFixed(1)}%</span>
+        <span class="res-cpu">${stats.cpu_pct.toFixed(1)}%</span>
+      </div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+function renderPipelineProcesses(data) {
+  const el = $("stx-pipeline-procs");
+  const res = data.resources;
+  if (!res || !res.pipeline_processes || !res.pipeline_processes.length) {
+    el.innerHTML = '<div class="loading">No process data</div>';
+    return;
+  }
+
+  // Header
+  let html = '<div class="proc-row" style="border-bottom:1px solid var(--border);padding-bottom:4px;margin-bottom:2px;"><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text);opacity:0.5;">Process</span><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text);opacity:0.5;text-align:right;">CPU</span><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text);opacity:0.5;text-align:right;">RSS</span></div>';
+
+  for (const proc of res.pipeline_processes) {
+    const memColor = proc.rss_mb > 800 ? "color:var(--warn);" : "";
+    html += `
+      <div class="proc-row">
+        <span class="proc-name">${escapeHtml(proc.name)}</span>
+        <span class="proc-cpu">${proc.cpu_pct.toFixed(1)}%</span>
+        <span class="proc-mem" style="${memColor}">${fmtMb(proc.rss_mb)}</span>
+      </div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+function renderHostResources(data) {
+  const res = data.resources;
+  if (!res || !res.host) return;
+  const h = res.host;
+
+  // RAM
+  if (h.ram_total_mb) {
+    $("shared-ram").textContent = `${fmtMb(h.ram_used_mb)} / ${fmtMb(h.ram_total_mb)}`;
+    $("shared-ram-sub").textContent = `${fmtMb(h.ram_available_mb)} available`;
+  }
+
+  // Swap
+  if (h.swap_total_mb) {
+    const swapPct = h.swap_total_mb > 0 ? ((h.swap_used_mb / h.swap_total_mb) * 100).toFixed(0) : 0;
+    $("shared-swap").textContent = `${fmtMb(h.swap_used_mb)} / ${fmtMb(h.swap_total_mb)}`;
+    const swapColor = swapPct > 80 ? "color:var(--warn);" : "";
+    $("shared-swap-sub").innerHTML = `<span style="${swapColor}">${swapPct}% utilized</span>`;
+  }
+
+  // Disk
+  if (h.disk_total_gb) {
+    $("shared-disk").textContent = `${h.disk_used_gb} / ${h.disk_total_gb} GB`;
+    const diskColor = h.disk_pct > 90 ? "color:var(--crit);" : h.disk_pct > 80 ? "color:var(--warn);" : "";
+    $("shared-disk-sub").innerHTML = `<span style="${diskColor}">${h.disk_pct}% utilized</span>`;
+  }
+}
+
 // ─── Main fetch loop ─────────────────────────────────────────────────────
 
 async function fetchAndRender() {
@@ -606,6 +733,11 @@ async function fetchAndRender() {
     renderSpgContainers(data);
     renderSpgHttp(data);
     renderSpgProcesses(data);
+    renderHostResources(data);
+    renderContainerResources("stx-resources", isStxContainer, data);
+    renderContainerResources("fna-resources", isFnaContainer, data);
+    renderContainerResources("spg-resources", isSpgContainer, data);
+    renderPipelineProcesses(data);
   } catch (err) {
     console.error("Fetch failed:", err);
     const banner = $("banner");

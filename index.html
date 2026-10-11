@@ -122,6 +122,28 @@
     .bar-fill.crit { background: var(--crit); }
     .bar-value { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; text-align: right; color: var(--text-dim); }
 
+    /* Resource utilization bar — compact version for container resources */
+    .res-row { display: grid; grid-template-columns: 140px 1fr 55px 55px; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--border); }
+    .res-row:last-child { border-bottom: none; }
+    .res-name { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .res-bar { height: 6px; background: var(--panel-2); border-radius: 3px; overflow: hidden; }
+    .res-fill { height: 100%; border-radius: 3px; }
+    .res-fill.ok { background: var(--ok); }
+    .res-fill.warn { background: var(--warn); }
+    .res-fill.crit { background: var(--crit); }
+    .res-pct { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11px; text-align: right; font-variant-numeric: tabular-nums; }
+    .res-pct.ok { color: var(--ok); }
+    .res-pct.warn { color: var(--warn); }
+    .res-pct.crit { color: var(--crit); }
+    .res-cpu { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11px; text-align: right; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+
+    /* Pipeline process rows */
+    .proc-row { display: grid; grid-template-columns: 1fr 55px 70px; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+    .proc-row:last-child { border-bottom: none; }
+    .proc-name { font-family: ui-monospace, "SF Mono", Menlo, monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .proc-cpu { text-align: right; color: var(--text-dim); font-family: ui-monospace, "SF Mono", Menlo, monospace; font-variant-numeric: tabular-nums; }
+    .proc-mem { text-align: right; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-variant-numeric: tabular-nums; }
+
     /* Deploy panel */
     .deploy-sha { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 16px; color: var(--info); }
     .deploy-msg { font-size: 13px; color: var(--text); margin-top: 6px; line-height: 1.4; word-wrap: break-word; }
@@ -175,6 +197,21 @@
       <div class="shared-value" id="shared-collector">—</div>
       <div class="shared-sub" id="shared-collector-sub">—</div>
     </div>
+    <div class="shared-cell">
+      <div class="shared-label">RAM</div>
+      <div class="shared-value" id="shared-ram">—</div>
+      <div class="shared-sub" id="shared-ram-sub">—</div>
+    </div>
+    <div class="shared-cell">
+      <div class="shared-label">Swap</div>
+      <div class="shared-value" id="shared-swap">—</div>
+      <div class="shared-sub" id="shared-swap-sub">—</div>
+    </div>
+    <div class="shared-cell">
+      <div class="shared-label">Disk</div>
+      <div class="shared-value" id="shared-disk">—</div>
+      <div class="shared-sub" id="shared-disk-sub">—</div>
+    </div>
   </div>
 
   <!-- Tabs -->
@@ -199,6 +236,11 @@
       <div class="panel span-2">
         <h2>FNA Containers</h2>
         <div id="fna-containers" class="loading">Loading…</div>
+      </div>
+
+      <div class="panel span-2">
+        <h2>FNA Resources</h2>
+        <div id="fna-resources" class="loading">Loading…</div>
       </div>
 
       <div class="panel">
@@ -241,6 +283,16 @@
         <div id="stx-containers" class="loading">Loading…</div>
       </div>
 
+      <div class="panel span-2">
+        <h2>STX Resources</h2>
+        <div id="stx-resources" class="loading">Loading…</div>
+      </div>
+
+      <div class="panel span-2">
+        <h2>Pipeline Processes</h2>
+        <div id="stx-pipeline-procs" class="loading">Loading…</div>
+      </div>
+
       <div class="panel">
         <h2>STX Deploy</h2>
         <div id="stx-deploy" class="loading">Loading…</div>
@@ -269,6 +321,11 @@
       <div class="panel span-2">
         <h2>SPG Containers</h2>
         <div id="spg-containers" class="loading">Loading…</div>
+      </div>
+
+      <div class="panel span-2">
+        <h2>SPG Resources</h2>
+        <div id="spg-resources" class="loading">Loading…</div>
       </div>
 
       <div class="panel">
