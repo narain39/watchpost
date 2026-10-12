@@ -119,11 +119,12 @@ function fnaWorst(data) {
   }
   if (data.rss_health?.critical > 0) worst = worstOf(worst, "crit");
   if (data.rss_health?.warning > 0) worst = worstOf(worst, "warn");
-  // Check container memory utilization
+  // Check container memory utilization (DB containers excluded — their
+  // cgroup fills with page cache by design; bars stay informational only)
   const res = data.resources;
   if (res && res.containers) {
     for (const [name, stats] of Object.entries(res.containers)) {
-      if (isFnaContainer({name})) {
+      if (isFnaContainer({name}) && !/postgres|redis|db/.test(name)) {
         worst = worstOf(worst, memSeverity(stats.mem_pct, name));
       }
     }
@@ -176,7 +177,7 @@ function stxWorst(data) {
   const res = data.resources;
   if (res && res.containers) {
     for (const [name, stats] of Object.entries(res.containers)) {
-      if (isStxContainer({name})) {
+      if (isStxContainer({name}) && !/postgres|redis|db/.test(name)) {
         worst = worstOf(worst, memSeverity(stats.mem_pct, name));
       }
     }
@@ -198,7 +199,7 @@ function spgWorst(data) {
   const res = data.resources;
   if (res && res.containers) {
     for (const [name, stats] of Object.entries(res.containers)) {
-      if (isSpgContainer({name})) {
+      if (isSpgContainer({name}) && !/postgres|redis|db/.test(name)) {
         worst = worstOf(worst, memSeverity(stats.mem_pct, name));
       }
     }
