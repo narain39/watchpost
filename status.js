@@ -515,8 +515,11 @@ function renderStxPipeline(data) {
         : pillFor(status);
       const msStr = ep.avg_ms_24h > 0 ? ` · ${ep.avg_ms_24h}ms` : "";
       // use derived status (not raw paused flag) so detail matches pill if source re-activates
+      const resumeStr = ep.paused_until
+        ? ` · resumes ${String(ep.paused_until).slice(0, 10)}`
+        : "";
       const detail = status === "paused"
-        ? `last ${relativeTime(ep.last_fetched)}`
+        ? `last ${relativeTime(ep.last_fetched)}${resumeStr}`
         : ep.calls_24h > 0
           ? `${fmtNum(ep.calls_24h)} calls · ${ep.errors_24h} err${msStr}`
           : `last ${relativeTime(ep.last_fetched)} · ${fmtNum(ep.calls_7d)} calls/7d`;
