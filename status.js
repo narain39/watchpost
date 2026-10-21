@@ -567,6 +567,9 @@ function renderStxPipeline(data) {
       <span class="stat-label">PHD updated</span>
       <span class="stat-value" style="font-size:12px; color:var(--text-dim);">${relativeTime(p.last_updated)}</span>
     </div>
+    <div style="margin-top:4px; text-align:right;">
+      <a href="https://stoxopia.com/phd" target="_blank" rel="noopener" style="font-size:12px; color:var(--info); text-decoration:none;">Open Pipeline Health Dashboard ↗</a>
+    </div>
   `;
 }
 
