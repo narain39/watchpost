@@ -162,6 +162,7 @@ function stxWorst(data) {
     worst = worstOf(worst, h < 70 ? "crit" : h < 85 ? "warn" : "ok");
   }
   for (const ep of (data.stx_endpoints || [])) {
+    if (ep.disabled) continue; // config-disabled — excluded from status
     const s = epStatus(ep);
     if (s !== "paused") worst = worstOf(worst, s);
   }
@@ -505,10 +506,14 @@ function renderStxPipeline(data) {
   // Per-source endpoint health rows (from fdr_raw_api_data — distinct from PHD stage/section metrics)
   // Status is cadence-aware: "idle 24h" is normal for weekly jobs (SEC EDGAR, FMP fundamentals, etc.)
   let endpointHtml;
+  // Config-disabled providers render in a separate footer section — visible
+  // for awareness, but excluded from application status (see stxWorst).
+  const activeEndpoints = endpoints.filter((ep) => !ep.disabled);
+  const disabledEndpoints = endpoints.filter((ep) => ep.disabled);
   if (!endpoints.length) {
     endpointHtml = `<div class="loading" style="font-size:12px; font-style:italic;">No endpoint data yet</div>`;
   } else {
-    endpointHtml = endpoints.map((ep) => {
+    endpointHtml = activeEndpoints.map((ep) => {
       const status = epStatus(ep);
       const { className, symbolClass, label } = status === "paused"
         ? { className: "dim", symbolClass: "symbol-dim", label: "paused" }
@@ -532,6 +537,22 @@ function renderStxPipeline(data) {
           <span class="pill ${className}"><span class="${symbolClass}"></span>${label}</span>
         </div>`;
     }).join("");
+
+    if (disabledEndpoints.length) {
+      endpointHtml += `
+        <div style="margin-top:10px; padding-top:8px; border-top:1px solid var(--border);">
+          <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text); opacity:0.5; margin-bottom:2px;">Disabled providers</div>
+          <div style="font-size:11px; color:var(--text-dim); font-style:italic; margin-bottom:4px;">Disabled by configuration — excluded from application status</div>
+          ${disabledEndpoints.map((ep) => `
+          <div class="check-row" style="opacity:0.6;">
+            <div style="flex:1; min-width:0;">
+              <div class="check-name">${escapeHtml(ep.source)}</div>
+              <div class="check-msg">last ${relativeTime(ep.last_fetched)}</div>
+            </div>
+            <span class="pill dim"><span class="symbol-dim"></span>disabled</span>
+          </div>`).join("")}
+        </div>`;
+    }
   }
 
   el.innerHTML = `
