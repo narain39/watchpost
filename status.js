@@ -212,7 +212,7 @@ function spgWorst(data) {
 
 function getActiveTab() {
   const hash = (window.location.hash || "").replace("#", "");
-  return ["fna", "stx", "spg"].includes(hash) ? hash : "fna";
+  return ["fna", "stx", "spg", "portfolio"].includes(hash) ? hash : "fna";
 }
 
 function setActiveTab(name) {
@@ -855,3 +855,151 @@ async function fetchAndRender() {
 
 fetchAndRender();
 setInterval(fetchAndRender, POLL_INTERVAL_MS);
+
+
+// ─── Portfolio tab (spec 042) ────────────────────────────────────────────
+// Separate source from the status Gist: an UNLISTED Gist whose id is the key. The key arrives
+// as ?pgist=<id|raw url> (from the Sharpignal bot's /portfolio reply) and is kept in localStorage.
+const PF_POLL_MS = 60 * 1000;
+const PF_STALE_MS = 20 * 60 * 1000;   // publisher runs every 10 min 08-20 ET
+const PF_GIST_OWNER = "narain39";
+
+function pfKey() {
+  const p = params.get("pgist");
+  if (p) { try { localStorage.setItem("spg_pgist", p); } catch (e) {} return p; }
+  try { return localStorage.getItem("spg_pgist"); } catch (e) { return null; }
+}
+function pfUrl(key) {
+  if (!key) return null;
+  if (/^https?:\/\//.test(key)) return key;
+  return `https://gist.githubusercontent.com/${PF_GIST_OWNER}/${key}/raw/portfolio.json`;
+}
+function money(v, sign) {
+  if (v === null || v === undefined || isNaN(v)) return "—";
+  const n = Number(v);
+  const s = (sign && n > 0 ? "+" : (n < 0 ? "−" : "")) + "$" + Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return sign ? `<span class="${n >= 0 ? "pf-pos" : "pf-neg"}">${s}</span>` : s;
+}
+function px(v) { return (v === null || v === undefined) ? "—" : Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function et(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso); if (isNaN(d.getTime())) return escapeHtml(String(iso));
+  return d.toLocaleString("en-US", { timeZone: "America/New_York", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
+}
+function pfTable(headers, rows) {
+  if (!rows || !rows.length) return '<div class="pf-empty">none</div>';
+  const th = headers.map((h) => `<th class="${h.num ? "num" : ""}">${escapeHtml(h.label)}</th>`).join("");
+  const tr = rows.map((r) => "<tr>" + headers.map((h) => `<td class="${h.num ? "num" : ""}">${h.fmt(r)}</td>`).join("") + "</tr>").join("");
+  return `<div class="pf-wrap"><table class="pf-table"><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table></div>`;
+}
+function statRows(pairs) {
+  return pairs.map(([k, v]) => `<div class="stat-row"><span class="stat-label">${escapeHtml(k)}</span><span class="stat-value">${v}</span></div>`).join("");
+}
+function pfSetDot(cls) { const d = $("tab-dot-portfolio"); if (d) d.className = "tab-dot " + cls; }
+
+function renderPortfolio(data) {
+  const gen = new Date(data.generated_at);
+  const stale = isNaN(gen.getTime()) || (Date.now() - gen.getTime()) > PF_STALE_MS;
+  pfSetDot(stale ? "warn" : "ok");
+  const errs = (data.errors || []).length ? ` · <span class="pf-neg">${data.errors.length} block error(s): ${escapeHtml(data.errors.join(", "))}</span>` : "";
+  $("pf-head").innerHTML = `<span>As of <b>${escapeHtml(data.as_of_et || "")}</b> · ${relativeTime(data.generated_at)}${stale ? ' · <span class="pf-neg">stale</span>' : ""}${errs}</span><span>v${data.version} · 10-min source · polled every 60s</span>`;
+
+  // ---- Alpaca paper
+  const p = data.paper || {};
+  const a = p.account, sm = p.summary || {};
+  $("pf-account").innerHTML = a ? statRows([
+    ["Equity", money(a.equity)], ["Cash", money(a.cash)], ["Buying power", money(a.buying_power)], ["Status", escapeHtml(a.status || "—")],
+    ["Realized (paper ↔ conservative)", sm.realized !== undefined ? `${money(sm.realized, true)} ↔ ${money(sm.conservative, true)}` : "—"],
+    ["Unrealized", sm.unrealized !== undefined ? money(sm.unrealized, true) : "—"],
+  ]) : '<div class="pf-empty">account unavailable</div>';
+  $("pf-positions").innerHTML = pfTable([
+    { label: "Ticker", fmt: (r) => escapeHtml(r.ticker) }, { label: "Qty", num: true, fmt: (r) => r.qty },
+    { label: "Avg entry", num: true, fmt: (r) => px(r.avg_entry) }, { label: "Last", num: true, fmt: (r) => px(r.last) },
+    { label: "Unreal.", num: true, fmt: (r) => money(r.upl, true) },
+  ], p.positions);
+  $("pf-orders").innerHTML = pfTable([
+    { label: "Ticker", fmt: (r) => escapeHtml(r.ticker) }, { label: "Side", fmt: (r) => escapeHtml(r.side) },
+    { label: "Qty", num: true, fmt: (r) => r.qty }, { label: "Limit", num: true, fmt: (r) => px(r.limit_price) },
+    { label: "Ext", fmt: (r) => (r.extended_hours ? "8–20" : "RTH") }, { label: "Status", fmt: (r) => escapeHtml(r.status) },
+  ], p.open_orders);
+  $("pf-trades").innerHTML = pfTable([
+    { label: "Ticker", fmt: (r) => escapeHtml(r.ticker) }, { label: "Stream", fmt: (r) => escapeHtml(r.stream) },
+    { label: "Qty", num: true, fmt: (r) => r.qty }, { label: "Limit", num: true, fmt: (r) => px(r.limit_price) },
+    { label: "Fill", num: true, fmt: (r) => px(r.filled_price) }, { label: "Target", num: true, fmt: (r) => px(r.target) },
+    { label: "Stop", num: true, fmt: (r) => px(r.stop) }, { label: "Status", fmt: (r) => escapeHtml(r.status) },
+    { label: "Exit", fmt: (r) => escapeHtml((r.exit_rule || "") + (r.forced_reason ? ` (${r.forced_reason})` : "")) },
+    { label: "Exit px", num: true, fmt: (r) => px(r.exit_price) }, { label: "P&L", num: true, fmt: (r) => money(r.realized_pnl, true) },
+    { label: "Entered", fmt: (r) => et(r.filled_at || r.created_at) },
+  ], p.trades);
+  $("pf-signals").innerHTML = pfTable([
+    { label: "Kind", fmt: (r) => escapeHtml(r.kind) },
+    { label: "Names", fmt: (r) => escapeHtml((r.tickers || []).map((t) => `${t.ticker} @ ${px(t.price)}`).join(", ") || "—") },
+  ], data.signals_today);
+
+  // ---- TS-Hypo ledger
+  const h = data.ts_hypo || {}, hs = h.summary || {};
+  const legs = hs.legs ? Object.entries(hs.legs).map(([k, v]) => `${k} ${v.n}× ${money(v.pnl, true)}`).join(" · ") : "—";
+  $("pf-hypo-summary").innerHTML = statRows([
+    ["Equity", money(hs.equity)], ["Realized (paper ↔ conservative)", `${money(hs.realized_pnl, true)} ↔ ${money(hs.conservative_realized, true)}`],
+    ["Unrealized", money(hs.unrealized_pnl, true)], ["Closed / open", `${hs.trade_count ?? "—"} / ${(hs.open_positions || []).length}`],
+    ["Waiting / missed / unverified", `${hs.waiting ?? 0} / ${hs.missed ?? 0} / ${hs.unverified ?? 0}`],
+    ["Median capture→fill", hs.median_entry_latency_min === null || hs.median_entry_latency_min === undefined ? "—" : `${hs.median_entry_latency_min} min`],
+    ["Legs", legs], ["Ladder / max hold", `${escapeHtml(String(h.ladder || ""))} · ${h.max_hold_days ?? "—"}d`],
+  ]);
+  const trades = h.trades || [];
+  const legsStr = (r) => (r.legs || []).map((l) => `${l.rule}@${px(l.price)}×${l.units}`).join(" · ") || "—";
+  $("pf-hypo-open").innerHTML = pfTable([
+    { label: "Ticker", fmt: (r) => escapeHtml(r.ticker) }, { label: "Status", fmt: (r) => escapeHtml(r.status) },
+    { label: "Buy tgt", num: true, fmt: (r) => px(r.buy_target) }, { label: "Captured", fmt: (r) => et(r.captured_at) },
+    { label: "Fill", num: true, fmt: (r) => px(r.filled_price) }, { label: "Filled at", fmt: (r) => et(r.filled_at) },
+    { label: "Units", num: true, fmt: (r) => `${r.remaining ?? "—"}/${r.units ?? "—"}` },
+    { label: "T1/T2/T3", fmt: (r) => (r.levels || []).map(px).join(" / ") },
+    { label: "Legs", fmt: (r) => legsStr(r) }, { label: "Last", num: true, fmt: (r) => px(r.last_price) },
+    { label: "Unreal.", num: true, fmt: (r) => money(r.unrealized_pnl, true) },
+    { label: "Dies", fmt: (r) => et(r.death_at || r.deadline_at) },
+  ], trades.filter((r) => r.status === "open" || r.status === "waiting"));
+  $("pf-hypo-closed").innerHTML = pfTable([
+    { label: "Ticker", fmt: (r) => escapeHtml(r.ticker) }, { label: "Status", fmt: (r) => escapeHtml(r.status + (r.missed_reason ? ` (${r.missed_reason})` : "")) },
+    { label: "Buy tgt", num: true, fmt: (r) => px(r.buy_target) }, { label: "Fill", num: true, fmt: (r) => px(r.filled_price) },
+    { label: "Units", num: true, fmt: (r) => r.units ?? "—" }, { label: "Legs", fmt: (r) => legsStr(r) },
+    { label: "Exit", fmt: (r) => escapeHtml(r.exit_rule || "—") },
+    { label: "Realized ↔ cons.", num: true, fmt: (r) => `${money(r.realized_pnl, true)} ↔ ${money(r.conservative_pnl, true)}` },
+    { label: "Captured", fmt: (r) => et(r.captured_at) },
+  ], trades.filter((r) => r.status !== "open" && r.status !== "waiting"));
+  const bars = h.bars_latest || {};
+  $("pf-hypo-bars").innerHTML = Object.keys(bars).length
+    ? statRows(Object.entries(bars).map(([t, ts]) => [t, `${et(ts)} (${relativeTime(ts)})`]))
+    : '<div class="pf-empty">no active tickers</div>';
+  $("pf-foot").textContent = "Paper = Alpaca paper account trading SPG's own pushes. TS-Hypo = book-kept from captured TS signals with fills verified against minute bars; no orders. Unlisted page — the link is the key.";
+}
+
+async function fetchPortfolio() {
+  const key = pfKey();
+  if (!key) {
+    $("pf-nokey").style.display = ""; $("pf-body").style.display = "none";
+    $("pf-head").innerHTML = "<span>No portfolio source. Use the bot's /portfolio link.</span>";
+    pfSetDot("dim");
+    return;
+  }
+  $("pf-nokey").style.display = "none"; $("pf-body").style.display = "";
+  try {
+    const resp = await fetch(`${pfUrl(key)}?nocache=${Date.now()}`, { cache: "no-store" });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    renderPortfolio(await resp.json());
+  } catch (err) {
+    console.error("Portfolio fetch failed:", err);
+    pfSetDot("crit");
+    $("pf-head").innerHTML = `<span class="pf-neg">Cannot load portfolio source — ${escapeHtml(err.message)}</span><span><a href="#" id="pf-reset">change key</a></span>`;
+    const r = $("pf-reset"); if (r) r.addEventListener("click", (e) => { e.preventDefault(); try { localStorage.removeItem("spg_pgist"); } catch (x) {} history.replaceState(null, "", location.pathname + "#portfolio"); fetchPortfolio(); });
+  }
+}
+const pfForm = $("pf-key-form");
+if (pfForm) pfForm.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const v = ($("pf-key-input").value || "").trim();
+  if (!v) return;
+  try { localStorage.setItem("spg_pgist", v); } catch (x) {}
+  fetchPortfolio();
+});
+fetchPortfolio();
+setInterval(fetchPortfolio, PF_POLL_MS);

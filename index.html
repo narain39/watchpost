@@ -22,6 +22,7 @@
       --accent-fna:   #3b82f6;   /* blue — FNA tab accent */
       --accent-stx:   #a855f7;   /* purple — STX tab accent */
       --accent-spg:   #14b8a6;   /* teal — SPG tab accent */
+      --accent-pf:    #f472b6;   /* pink — Portfolio tab accent (spec 042) */
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; min-height: 100vh; }
@@ -61,6 +62,7 @@
     .tab[data-tab="fna"].active { background: rgba(59,130,246,0.45); border-color: rgba(59,130,246,0.65); border-bottom-color: var(--accent-fna); }
     .tab[data-tab="stx"].active { background: rgba(168,85,247,0.45); border-color: rgba(168,85,247,0.65); border-bottom-color: var(--accent-stx); }
     .tab[data-tab="spg"].active { background: rgba(20,184,166,0.45); border-color: rgba(20,184,166,0.65); border-bottom-color: var(--accent-spg); }
+    .tab[data-tab="portfolio"].active { background: rgba(244,114,182,0.40); border-color: rgba(244,114,182,0.65); border-bottom-color: var(--accent-pf); }
     .tab-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-faint); }
     .tab-dot.ok   { background: var(--ok); }
     .tab-dot.warn { background: var(--warn); }
@@ -72,6 +74,7 @@
     .tab-panel[data-tab="fna"] { border-top: 3px solid var(--accent-fna); margin-top: -1px; padding: 14px 12px 12px 12px; background: rgba(59,130,246,0.04); }
     .tab-panel[data-tab="stx"] { border-top: 3px solid var(--accent-stx); margin-top: -1px; padding: 14px 12px 12px 12px; background: rgba(168,85,247,0.04); }
     .tab-panel[data-tab="spg"] { border-top: 3px solid var(--accent-spg); margin-top: -1px; padding: 14px 12px 12px 12px; background: rgba(20,184,166,0.04); }
+    .tab-panel[data-tab="portfolio"] { border-top: 3px solid var(--accent-pf); margin-top: -1px; padding: 14px 12px 12px 12px; background: rgba(244,114,182,0.04); }
 
     /* Grid layout */
     .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
@@ -106,6 +109,28 @@
     .tab-panel[data-tab="fna"] .check-name { color: #93c5fd; }   /* blue-300 — soft on dark bg */
     .tab-panel[data-tab="stx"] .check-name { color: #d8b4fe; }   /* purple-300 — soft on dark bg */
     .tab-panel[data-tab="spg"] .check-name { color: #5eead4; }   /* teal-300 — soft on dark bg */
+
+    /* Portfolio tab (spec 042) — two books, visibly separated */
+    .pf-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; font-size: 13px; color: var(--text-dim); }
+    .pf-book { border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 16px; }
+    .pf-book.paper { border-color: rgba(20,184,166,0.55); background: rgba(20,184,166,0.05); }
+    .pf-book.hypo  { border-color: rgba(244,114,182,0.55); background: rgba(244,114,182,0.05); }
+    .pf-book-title { font-size: 15px; font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+    .pf-book.paper .pf-book-title { color: #5eead4; }
+    .pf-book.hypo  .pf-book-title { color: #f9a8d4; }
+    .pf-badge { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: rgba(255,255,255,0.08); color: var(--text); opacity: 0.8; }
+    .pf-table { width: 100%; border-collapse: collapse; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; }
+    .pf-table th { text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.6; padding: 4px 6px; border-bottom: 1px solid var(--border); }
+    .pf-table td { padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.06); white-space: nowrap; }
+    .pf-table td.num, .pf-table th.num { text-align: right; }
+    .pf-table tr:last-child td { border-bottom: none; }
+    .pf-pos { color: var(--ok); } .pf-neg { color: var(--crit); }
+    .pf-empty { font-size: 12px; opacity: 0.6; padding: 6px 0; }
+    .pf-wrap { overflow-x: auto; }
+    .pf-key-form { display: flex; gap: 8px; margin-top: 8px; }
+    .pf-key-form input { flex: 1; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; font-family: ui-monospace, Menlo, monospace; font-size: 13px; }
+    .pf-key-form button { background: var(--accent-pf); color: #0f172a; border: none; border-radius: 6px; padding: 8px 14px; font-weight: 700; cursor: pointer; }
+    .pf-foot { font-size: 11px; opacity: 0.6; margin-top: 6px; }
 
     /* Backlog row */
     .stat-row { display: flex; justify-content: space-between; align-items: baseline; padding: 4px 0; }
@@ -232,6 +257,10 @@
       <span>SPG</span>
       <span class="tab-dot" id="tab-dot-spg"></span>
     </button>
+    <button class="tab" data-tab="portfolio" role="tab">
+      <span>Portfolio</span>
+      <span class="tab-dot" id="tab-dot-portfolio"></span>
+    </button>
   </div>
 
   <!-- FNA tab content -->
@@ -340,6 +369,39 @@
         <h2>SPG Processes</h2>
         <div id="spg-processes" class="loading">Loading…</div>
       </div>
+    </div>
+  </div>
+
+  <!-- Portfolio tab content (spec 042) — unlisted: the source Gist id arrives via ?pgist= (from the
+       Sharpignal bot's /portfolio reply) and is remembered in localStorage; nothing is hard-coded here. -->
+  <div class="tab-panel" data-tab="portfolio" role="tabpanel">
+    <div class="pf-head" id="pf-head"><span>Portfolio source not loaded yet…</span></div>
+    <div class="panel" id="pf-nokey" style="display:none">
+      <h2>Portfolio source not set</h2>
+      <div style="font-size:13px; opacity:0.85">Open this tab from the Sharpignal bot's <code>/portfolio</code> reply (the link carries the key), or paste the Gist id / raw URL below. It is remembered on this device only.</div>
+      <form class="pf-key-form" id="pf-key-form"><input id="pf-key-input" placeholder="Gist id or raw portfolio.json URL" autocomplete="off" /><button type="submit">Load</button></form>
+    </div>
+    <div id="pf-body" style="display:none">
+      <section class="pf-book paper">
+        <div class="pf-book-title">Alpaca paper <span class="pf-badge">SPG signals · spec 040</span></div>
+        <div class="grid">
+          <div class="panel"><h2>Account</h2><div id="pf-account" class="loading">Loading…</div></div>
+          <div class="panel"><h2>Positions</h2><div id="pf-positions" class="loading">Loading…</div></div>
+          <div class="panel"><h2>Open orders</h2><div id="pf-orders" class="loading">Loading…</div></div>
+          <div class="panel span-2"><h2>Trades (last 7 days + anything open)</h2><div id="pf-trades" class="loading">Loading…</div></div>
+          <div class="panel"><h2>SPG pushes today</h2><div id="pf-signals" class="loading">Loading…</div></div>
+        </div>
+      </section>
+      <section class="pf-book hypo">
+        <div class="pf-book-title">TS-Hypo ledger <span class="pf-badge">touch-verified · spec 041 v2</span></div>
+        <div class="grid">
+          <div class="panel"><h2>Summary</h2><div id="pf-hypo-summary" class="loading">Loading…</div></div>
+          <div class="panel span-2"><h2>Open &amp; waiting</h2><div id="pf-hypo-open" class="loading">Loading…</div></div>
+          <div class="panel span-2"><h2>Closed · missed · unverified</h2><div id="pf-hypo-closed" class="loading">Loading…</div></div>
+          <div class="panel"><h2>Bars freshness</h2><div id="pf-hypo-bars" class="loading">Loading…</div></div>
+        </div>
+      </section>
+      <div class="pf-foot" id="pf-foot"></div>
     </div>
   </div>
 
