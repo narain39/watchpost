@@ -212,7 +212,7 @@ function spgWorst(data) {
 
 function getActiveTab() {
   const hash = (window.location.hash || "").replace("#", "");
-  return ["fna", "stx", "spg", "portfolio"].includes(hash) ? hash : "fna";
+  return ["fna", "stx", "spg", "portfolio", "phd"].includes(hash) ? hash : "fna";
 }
 
 function setActiveTab(name) {
@@ -222,6 +222,11 @@ function setActiveTab(name) {
   document.querySelectorAll(".tab-panel").forEach((panel) => {
     panel.classList.toggle("active", panel.dataset.tab === name);
   });
+  // PHD tab embeds the live dashboard — load the iframe on first visit only
+  if (name === "phd") {
+    const frame = document.getElementById("phd-frame");
+    if (frame && !frame.src) frame.src = frame.dataset.src;
+  }
   if (window.location.hash !== "#" + name) {
     history.replaceState(null, "", "#" + name);
   }
@@ -566,9 +571,6 @@ function renderStxPipeline(data) {
     <div class="stat-row" style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border);">
       <span class="stat-label">PHD updated</span>
       <span class="stat-value" style="font-size:12px; color:var(--text-dim);">${relativeTime(p.last_updated)}</span>
-    </div>
-    <div style="margin-top:4px; text-align:right;">
-      <a href="https://stoxopia.com/phd" target="_blank" rel="noopener" style="font-size:12px; color:var(--info); text-decoration:none;">Open Pipeline Health Dashboard ↗</a>
     </div>
   `;
 }

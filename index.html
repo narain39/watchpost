@@ -75,6 +75,9 @@
     .tab-panel[data-tab="stx"] { border-top: 3px solid var(--accent-stx); margin-top: -1px; padding: 14px 12px 12px 12px; background: rgba(168,85,247,0.04); }
     .tab-panel[data-tab="spg"] { border-top: 3px solid var(--accent-spg); margin-top: -1px; padding: 14px 12px 12px 12px; background: rgba(20,184,166,0.04); }
     .tab-panel[data-tab="portfolio"] { border-top: 3px solid var(--accent-pf); margin-top: -1px; padding: 14px 12px 12px 12px; background: rgba(244,114,182,0.04); }
+    .tab[data-tab="phd"].active { background: rgba(245,158,11,0.45); border-color: rgba(245,158,11,0.65); border-bottom-color: var(--warn); }
+    .tab-panel[data-tab="phd"] { border-top: 3px solid var(--warn); margin-top: -1px; padding: 8px 0 0 0; background: rgba(245,158,11,0.04); }
+    #phd-frame { width: 100%; height: calc(100vh - 230px); min-height: 640px; border: none; border-radius: 0 0 8px 8px; background: #0f172a; }
 
     /* Grid layout */
     .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
@@ -261,6 +264,9 @@
       <span>Portfolio</span>
       <span class="tab-dot" id="tab-dot-portfolio"></span>
     </button>
+    <button class="tab" data-tab="phd" role="tab" title="Pipeline Health Dashboard (embedded live)">
+      <span>PHD</span>
+    </button>
   </div>
 
   <!-- FNA tab content -->
@@ -338,7 +344,10 @@
         <div id="stx-pipeline-procs" class="loading">Loading…</div>
       </div>
       <div class="panel">
-        <h2>STX Pipeline</h2>
+        <div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px;">
+          <h2>STX Pipeline</h2>
+          <a href="https://stoxopia-feat.vercel.app/phd" target="_blank" rel="noopener" style="font-size:11px; color:var(--info); text-decoration:none; white-space:nowrap;">Open PHD ↗</a>
+        </div>
         <div id="stx-pipeline" class="loading">Loading…</div>
       </div>
     </div>
@@ -403,6 +412,11 @@
       </section>
       <div class="pf-foot" id="pf-foot"></div>
     </div>
+  </div>
+
+  <!-- PHD tab content — live Pipeline Health Dashboard, embedded -->
+  <div class="tab-panel" data-tab="phd" role="tabpanel">
+    <iframe id="phd-frame" data-src="https://stoxopia-feat.vercel.app/phd" title="Pipeline Health Dashboard" loading="lazy"></iframe>
   </div>
 
   <div class="footer">
