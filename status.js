@@ -222,11 +222,6 @@ function setActiveTab(name) {
   document.querySelectorAll(".tab-panel").forEach((panel) => {
     panel.classList.toggle("active", panel.dataset.tab === name);
   });
-  // PHD tab embeds the live dashboard — load the iframe on first visit only
-  if (name === "phd") {
-    const frame = document.getElementById("phd-frame");
-    if (frame && !frame.src) frame.src = frame.dataset.src;
-  }
   if (window.location.hash !== "#" + name) {
     history.replaceState(null, "", "#" + name);
   }
