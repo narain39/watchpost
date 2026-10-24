@@ -809,6 +809,62 @@ function renderHostResources(data) {
   }
 }
 
+
+// ─── Native mini-PHD (Fix22) — rendered from stx_phd gist snapshot ───────
+function phdPctColor(pct) {
+  if (pct == null) return "var(--text-faint)";
+  if (pct >= 95) return "var(--ok)";
+  if (pct >= 70) return "#eab308";
+  if (pct >= 40) return "#f97316";
+  return "var(--crit)";
+}
+
+function renderPhd(data) {
+  const el = $("phd-native");
+  if (!el) return;
+  const p = data.stx_phd;
+  if (!p || !p.available) {
+    el.innerHTML = '<div class="loading">No PHD snapshot yet — appears after the next PHD sync (every 5 min)</div>';
+    return;
+  }
+  const s = p.summary || {};
+  const stages = [
+    ["Overall", p.overall_health, s.overall_trend],
+    ["FDR", s.avg_fdr_pct, s.fdr_trend],
+    ["CE", s.avg_ce_pct, s.ce_trend],
+    ["DIG", s.avg_dig_pct, s.dig_trend],
+    ["ANG", s.avg_ang_pct, s.ang_trend],
+  ];
+  const tiles = stages.map(([label, pct, trend]) => `
+    <div style="flex:1; min-width:110px; background:var(--panel-2); border-radius:8px; padding:10px 14px; text-align:center;">
+      <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; opacity:0.6;">${label}</div>
+      <div style="font-size:22px; font-weight:700; font-family:ui-monospace,monospace; color:${phdPctColor(pct)};">${pct != null ? pct.toFixed(1) + "%" : "—"} <span style="font-size:13px;">${escapeHtml(trend || "")}</span></div>
+    </div>`).join("");
+
+  const hdrCell = 'font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;opacity:0.5;text-align:right;';
+  const rows = (p.sections || []).map((sec) => {
+    const cells = [sec.fdr_pct, sec.ce_pct, sec.dig_pct, sec.ang_pct].map((pct) =>
+      `<span style="text-align:right; font-family:ui-monospace,monospace; font-size:12px; font-variant-numeric:tabular-nums; color:${phdPctColor(pct)};">${pct != null ? pct.toFixed(0) + "%" : "—"}</span>`).join("");
+    return `
+      <div style="display:grid; grid-template-columns:1fr 56px 56px 56px 56px; gap:8px; padding:5px 0; border-bottom:1px solid var(--border);">
+        <span style="font-family:ui-monospace,monospace; font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(sec.name || "?")}</span>
+        ${cells}
+      </div>`;
+  }).join("");
+
+  el.classList.remove("loading");
+  el.innerHTML = `
+    <div style="font-size:12px; color:var(--text-dim); margin:4px 0 10px 0;">
+      ${fmtNum(p.ticker_count)} tickers · market ${p.market_open ? '<span style="color:var(--ok);font-weight:600;">OPEN</span>' : "CLOSED"} · synced ${relativeTime(p.synced_at)}
+    </div>
+    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">${tiles}</div>
+    <div style="display:grid; grid-template-columns:1fr 56px 56px 56px 56px; gap:8px; padding-bottom:6px; border-bottom:1px solid var(--border);">
+      <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;opacity:0.5;">Section</span>
+      <span style="${hdrCell}">FDR</span><span style="${hdrCell}">CE</span><span style="${hdrCell}">DIG</span><span style="${hdrCell}">ANG</span>
+    </div>
+    ${rows}`;
+}
+
 // ─── Main fetch loop ─────────────────────────────────────────────────────
 
 async function fetchAndRender() {
@@ -841,6 +897,7 @@ async function fetchAndRender() {
     renderContainerResources("spg-resources", isSpgContainer, data);
     renderPipelineProcesses(data);
     renderBroker(data);
+    renderPhd(data);
   } catch (err) {
     console.error("Fetch failed:", err);
     const banner = $("banner");
