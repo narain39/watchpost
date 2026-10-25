@@ -841,12 +841,12 @@ function renderPhd(data) {
       <div style="font-size:22px; font-weight:700; font-family:ui-monospace,monospace; color:${phdPctColor(pct)};">${pct != null ? pct.toFixed(1) + "%" : "—"} <span style="font-size:13px;">${escapeHtml(trend || "")}</span></div>
     </div>`).join("");
 
-  const hdrCell = 'font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;opacity:0.5;text-align:right;';
+  const hdrCell = 'font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;opacity:0.5;text-align:center;';
   const rows = (p.sections || []).map((sec) => {
     const cells = [sec.fdr_pct, sec.ce_pct, sec.dig_pct, sec.ang_pct].map((pct) =>
-      `<span style="text-align:right; font-family:ui-monospace,monospace; font-size:12px; font-variant-numeric:tabular-nums; color:${phdPctColor(pct)};">${pct != null ? pct.toFixed(0) + "%" : "—"}</span>`).join("");
+      `<span style="text-align:center; font-family:ui-monospace,monospace; font-size:12px; font-variant-numeric:tabular-nums; color:${phdPctColor(pct)};">${pct != null ? pct.toFixed(0) + "%" : "—"}</span>`).join("");
     return `
-      <div style="display:grid; grid-template-columns:1fr 56px 56px 56px 56px; gap:8px; padding:5px 0; border-bottom:1px solid var(--border);">
+      <div style="display:grid; grid-template-columns:minmax(160px,2fr) repeat(4, 1fr); gap:8px; padding:5px 0; border-bottom:1px solid var(--border);">
         <span style="font-family:ui-monospace,monospace; font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(sec.name || "?")}</span>
         ${cells}
       </div>`;
@@ -858,7 +858,7 @@ function renderPhd(data) {
       ${fmtNum(p.ticker_count)} tickers · market ${p.market_open ? '<span style="color:var(--ok);font-weight:600;">OPEN</span>' : "CLOSED"} · synced ${relativeTime(p.synced_at)}
     </div>
     <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">${tiles}</div>
-    <div style="display:grid; grid-template-columns:1fr 56px 56px 56px 56px; gap:8px; padding-bottom:6px; border-bottom:1px solid var(--border);">
+    <div style="display:grid; grid-template-columns:minmax(160px,2fr) repeat(4, 1fr); gap:8px; padding-bottom:6px; border-bottom:1px solid var(--border);">
       <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;opacity:0.5;">Section</span>
       <span style="${hdrCell}">FDR</span><span style="${hdrCell}">CE</span><span style="${hdrCell}">DIG</span><span style="${hdrCell}">ANG</span>
     </div>
