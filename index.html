@@ -129,7 +129,8 @@
     .pf-table tr:last-child td { border-bottom: none; }
     .pf-pos { color: var(--ok); } .pf-neg { color: var(--crit); }
     .pf-empty { font-size: 12px; opacity: 0.6; padding: 6px 0; }
-    .pf-wrap { overflow-x: auto; }
+    .pf-wrap { overflow-x: auto; overflow-y: auto; max-height: 420px; }
+    .pf-table thead th { position: sticky; top: 0; background: var(--panel); z-index: 1; }
     .pf-key-form { display: flex; gap: 8px; margin-top: 8px; }
     .pf-key-form input { flex: 1; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; font-family: ui-monospace, Menlo, monospace; font-size: 13px; }
     .pf-key-form button { background: var(--accent-pf); color: #0f172a; border: none; border-radius: 6px; padding: 8px 14px; font-weight: 700; cursor: pointer; }
