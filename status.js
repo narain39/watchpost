@@ -141,12 +141,17 @@ function epStatus(ep) {
   const errorRate = ep.calls_24h > 0 ? ep.errors_24h / ep.calls_24h : 0;
   if (ep.calls_7d === 0) return "crit";
   if (ep.calls_24h > 0) return errorRate > 0.2 ? "warn" : "ok";
-  // calls_24h == 0 but was active this week — check cadence
+  // calls_24h == 0 but was active this week — check cadence.
+  // Floor the tolerance at 72h: bursty once-a-day jobs (polygon_grouped
+  // daily bars, polygon_corporate) are legitimately silent all weekend —
+  // deriving cadence from call volume (2841 calls/7d ≈ "every 3.5 min")
+  // false-warned them every Saturday-Monday. 72h still catches a daily
+  // job that truly died (silent past Monday).
   const avgIntervalHours = (7 * 24) / ep.calls_7d;
   const ageHours = ep.last_fetched
     ? (Date.now() - new Date(ep.last_fetched).getTime()) / 3_600_000
     : Infinity;
-  return ageHours > avgIntervalHours * 3 ? "warn" : "ok";
+  return ageHours > Math.max(avgIntervalHours * 3, 72) ? "warn" : "ok";
 }
 
 // Compute worst signal for the STX tab
