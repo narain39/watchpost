@@ -956,7 +956,41 @@ function statRows(pairs) {
 }
 function pfSetDot(cls) { const d = $("tab-dot-portfolio"); if (d) d.className = "tab-dot " + cls; }
 
+// ---- spec 047: per-signal lesson record — one counterfactual SPG policy book per row
+let PF_LESSONS = null;
+function lessonCell(r) {
+  const l = PF_LESSONS && PF_LESSONS.by_trade ? PF_LESSONS.by_trade[String(r.id)] : null;
+  if (!l || !l.lesson) return "—";
+  const best = l.best_label ? `<b>${escapeHtml(l.best_label)}</b> ${money(l.best_delta, true)} · ` : "";
+  const text = l.lesson.split(" · ").slice(-1)[0];
+  return `<span class="pf-lesson" title="${escapeHtml(l.lesson)}">${best}${escapeHtml(text)}</span>`;
+}
+function renderLessons(L) {
+  const el = $("pf-hypo-lessons");
+  if (!el) return;
+  if (!L || !(L.policies || []).length) { el.innerHTML = '<div class="pf-empty">no lesson records yet (nightly 21:05 ET)</div>'; return; }
+  const minN = L.min_n || 30;
+  const sig = (r) => r.id === "ts_faithful" ? "control"
+    : (r.significant ? '<span class="pf-pos">✓ significant</span>' : `<span class="pf-dim">forward n ${r.n_forward}/${minN} · not yet significant</span>`);
+  const pct = (v) => (v === null || v === undefined) ? "—" : `${v > 0 ? "+" : ""}${Number(v).toFixed(1)}%`;
+  el.innerHTML = `<div class="pf-note">Same TS fills, SPG's own exits. Δ = policy minus TS-faithful (realized + unrealized). Δ/peak = Δ per $ of peak concurrent capital (DCA / re-entry commit more). As of ${et(L.as_of)} · parameters frozen ${escapeHtml(L.freeze || "")}; only trades filled after the freeze count toward T-6.</div>`
+    + pfTable([
+      { label: "Policy", fmt: (r) => r.id === "ts_faithful" ? `<b>${escapeHtml(r.label)}</b>` : escapeHtml(r.label) },
+      { label: "Equity now", num: true, fmt: (r) => money(r.equity) },
+      { label: "P&L", num: true, fmt: (r) => money(r.pnl, true) },
+      { label: "Δ vs TS", num: true, fmt: (r) => r.id === "ts_faithful" ? "—" : money(r.delta_vs_ts, true) },
+      { label: "Δ/peak", num: true, fmt: (r) => r.id === "ts_faithful" ? "—" : pct(r.delta_per_peak_pct) },
+      { label: "Closed / open", num: true, fmt: (r) => `${r.n_closed} / ${r.n_open}` },
+      { label: "Win", num: true, fmt: (r) => r.win_rate === null || r.win_rate === undefined ? "—" : `${Math.round(r.win_rate * 100)}%` },
+      { label: "Worst", num: true, fmt: (r) => money(r.worst, true) },
+      { label: "Max DD", num: true, fmt: (r) => money(r.max_drawdown, true) },
+      { label: "Peak capital", num: true, fmt: (r) => money(r.peak_capital) },
+      { label: "Evidence", fmt: (r) => sig(r) },
+    ], L.policies);
+}
+
 function renderPortfolio(data) {
+  PF_LESSONS = data.lessons || null;
   const gen = new Date(data.generated_at);
   const stale = isNaN(gen.getTime()) || (Date.now() - gen.getTime()) > PF_STALE_MS;
   pfSetDot(stale ? "warn" : "ok");
@@ -1024,7 +1058,9 @@ function renderPortfolio(data) {
     { label: "Exit", fmt: (r) => escapeHtml(r.exit_rule || "—") },
     { label: "Realized ↔ cons.", num: true, fmt: (r) => `${money(r.realized_pnl, true)} ↔ ${money(r.conservative_pnl, true)}` },
     { label: "Captured", fmt: (r) => et(r.captured_at) },
+    { label: "Lesson (spec 047)", fmt: (r) => lessonCell(r) },
   ], trades.filter((r) => r.status !== "open" && r.status !== "waiting"));
+  renderLessons(data.lessons);
   const bars = h.bars_latest || {};
   $("pf-hypo-bars").innerHTML = Object.keys(bars).length
     ? statRows(Object.entries(bars).map(([t, ts]) => [t, `${et(ts)} (${relativeTime(ts)})`]))

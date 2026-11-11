@@ -85,6 +85,7 @@
     .panel { background: var(--panel); border-radius: 8px; padding: 14px 16px; border: 1px solid var(--border); }
     .panel h2 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text); margin-bottom: 10px; opacity: 0.7; }
     .panel.span-2 { grid-column: span 2; }
+    .panel.span-3 { grid-column: 1 / -1; }
 
     /* Pills + symbols (color + shape redundancy for color-blind users) */
     .pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
@@ -129,6 +130,9 @@
     .pf-table tr:last-child td { border-bottom: none; }
     .pf-pos { color: var(--ok); } .pf-neg { color: var(--crit); }
     .pf-empty { font-size: 12px; opacity: 0.6; padding: 6px 0; }
+    .pf-dim { opacity: 0.6; }
+    .pf-note { font-size: 11px; opacity: 0.7; margin-bottom: 8px; line-height: 1.4; }
+    .pf-lesson { font-size: 11px; white-space: normal; display: inline-block; min-width: 180px; max-width: 320px; }
     .pf-wrap { overflow-x: auto; overflow-y: auto; max-height: 420px; }
     .pf-table thead th { position: sticky; top: 0; background: var(--panel); z-index: 1; }
     .pf-key-form { display: flex; gap: 8px; margin-top: 8px; }
@@ -196,6 +200,7 @@
     /* Responsive */
     @media (max-width: 700px) {
       .panel.span-2 { grid-column: span 1; }
+      .panel.span-3 { grid-column: span 1; }
       .grid-2 { grid-template-columns: 1fr; }
       .banner { flex-direction: column; align-items: flex-start; }
       .banner-meta { text-align: left; }
@@ -409,6 +414,7 @@
           <div class="panel span-2"><h2>Open &amp; waiting</h2><div id="pf-hypo-open" class="loading">Loading…</div></div>
           <div class="panel span-2"><h2>Closed · missed · unverified</h2><div id="pf-hypo-closed" class="loading">Loading…</div></div>
           <div class="panel"><h2>Bars freshness</h2><div id="pf-hypo-bars" class="loading">Loading…</div></div>
+          <div class="panel span-3"><h2>SPG policy books on the same TS signals <span class="pf-badge">counterfactual · spec 047</span></h2><div id="pf-hypo-lessons" class="loading">Loading…</div></div>
         </div>
       </section>
       <div class="pf-foot" id="pf-foot"></div>
