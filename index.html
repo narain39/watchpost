@@ -132,7 +132,7 @@
     .pf-empty { font-size: 12px; opacity: 0.6; padding: 6px 0; }
     .pf-dim { opacity: 0.6; }
     .pf-note { font-size: 11px; opacity: 0.7; margin-bottom: 8px; line-height: 1.4; }
-    .pf-lesson { font-size: 11px; white-space: normal; display: inline-block; min-width: 180px; max-width: 320px; }
+    .pf-lesson { font-size: 11px; white-space: nowrap; display: inline-block; max-width: 260px; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
     .pf-wrap { overflow-x: auto; overflow-y: auto; max-height: 420px; }
     .pf-table thead th { position: sticky; top: 0; background: var(--panel); z-index: 1; }
     .pf-key-form { display: flex; gap: 8px; margin-top: 8px; }
@@ -411,10 +411,10 @@
         <div class="pf-book-title">TS-Hypo ledger <span class="pf-badge">touch-verified · spec 041 v2</span></div>
         <div class="grid">
           <div class="panel"><h2>Summary</h2><div id="pf-hypo-summary" class="loading">Loading…</div></div>
-          <div class="panel span-3"><h2>SPG policy books on the same TS signals <span class="pf-badge">counterfactual · spec 047</span></h2><div id="pf-hypo-lessons" class="loading">Loading…</div></div>
           <div class="panel span-2"><h2>Open &amp; waiting</h2><div id="pf-hypo-open" class="loading">Loading…</div></div>
           <div class="panel span-2"><h2>Closed · missed · unverified</h2><div id="pf-hypo-closed" class="loading">Loading…</div></div>
           <div class="panel"><h2>Bars freshness</h2><div id="pf-hypo-bars" class="loading">Loading…</div></div>
+          <div class="panel span-3"><h2>SPG policy books on the same TS signals <span class="pf-badge">counterfactual · spec 047</span></h2><div id="pf-hypo-lessons" class="loading">Loading…</div></div>
         </div>
       </section>
       <div class="pf-foot" id="pf-foot"></div>
