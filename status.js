@@ -956,6 +956,75 @@ function statRows(pairs) {
 }
 function pfSetDot(cls) { const d = $("tab-dot-portfolio"); if (d) d.className = "tab-dot " + cls; }
 
+// ---- Markdown export of the Portfolio tab (built from the rendered DOM, so it always matches the screen)
+let PF_AS_OF = "";
+function mdCell(node) {
+  const t = (node.getAttribute && node.getAttribute("title")) || "";
+  const lesson = node.querySelector && node.querySelector(".pf-lesson");
+  const text = lesson && lesson.getAttribute("title") ? lesson.getAttribute("title") : node.textContent;
+  return String(t && !text.trim() ? t : text).replace(/\s+/g, " ").trim().replace(/\|/g, "\\|") || " ";
+}
+function mdPanel(panel) {
+  const out = [];
+  const h2 = panel.querySelector("h2");
+  if (h2) {
+    const b = h2.querySelector(".pf-badge");
+    const name = [...h2.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join(" ").replace(/\s+/g, " ").trim();
+    out.push(`### ${name}${b ? ` _(${b.textContent.trim()})_` : ""}`, "");
+  }
+  panel.querySelectorAll(".pf-note").forEach((n) => out.push(`_${n.textContent.replace(/\s+/g, " ").trim()}_`, ""));
+  const table = panel.querySelector("table");
+  if (table) {
+    const heads = [...table.querySelectorAll("thead th")].map(mdCell);
+    out.push(`| ${heads.join(" | ")} |`, `| ${heads.map((_, i) => (table.querySelectorAll("thead th")[i].classList.contains("num") ? "---:" : "---")).join(" | ")} |`);
+    table.querySelectorAll("tbody tr").forEach((tr) => out.push(`| ${[...tr.children].map(mdCell).join(" | ")} |`));
+    out.push("");
+    return out;
+  }
+  const stats = panel.querySelectorAll(".stat-row");
+  if (stats.length) {
+    stats.forEach((r) => {
+      const k = r.querySelector(".stat-label"), v = r.querySelector(".stat-value");
+      out.push(`- **${mdCell(k)}**: ${mdCell(v)}`);
+    });
+    out.push("");
+    return out;
+  }
+  const body = panel.querySelector("[id]");
+  const txt = (body || panel).textContent.replace(/\s+/g, " ").trim();
+  out.push(txt && txt !== (h2 && h2.textContent.trim()) ? txt : "_none_", "");
+  return out;
+}
+function portfolioMarkdown() {
+  const lines = [`# SPG Portfolio — as of ${PF_AS_OF || "?"}`, ""];
+  const head = $("pf-head");
+  if (head) {
+    const parts = [...head.children].map((c) => c.textContent.replace("⬇ Export .md", "").replace(/\s+/g, " ").trim()).filter(Boolean);
+    lines.push(`_${parts.join(" · ")}_`, "");
+  }
+  document.querySelectorAll("#pf-body .pf-book").forEach((book) => {
+    const title = book.querySelector(".pf-book-title");
+    const badge = title && title.querySelector(".pf-badge");
+    const name = title ? [...title.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join(" ").trim() : "Book";
+    lines.push(`## ${name}${badge ? ` _(${badge.textContent.trim()})_` : ""}`, "");
+    book.querySelectorAll(".panel").forEach((p) => lines.push(...mdPanel(p)));
+  });
+  const foot = $("pf-foot");
+  if (foot && foot.textContent.trim()) lines.push("---", "", `_${foot.textContent.trim()}_`, "");
+  return lines.join("\n");
+}
+function exportPortfolioMarkdown() {
+  const md = portfolioMarkdown();
+  const stamp = (PF_AS_OF || new Date().toISOString()).replace(/[^0-9]+/g, "-").replace(/^-|-$/g, "");
+  const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `spg-portfolio-${stamp || "export"}.md`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+
 // ---- spec 047: per-signal lesson record — one counterfactual SPG policy book per row
 let PF_LESSONS = null;
 function lessonCell(r) {
@@ -995,7 +1064,10 @@ function renderPortfolio(data) {
   const stale = isNaN(gen.getTime()) || (Date.now() - gen.getTime()) > PF_STALE_MS;
   pfSetDot(stale ? "warn" : "ok");
   const errs = (data.errors || []).length ? ` · <span class="pf-neg">${data.errors.length} block error(s): ${escapeHtml(data.errors.join(", "))}</span>` : "";
-  $("pf-head").innerHTML = `<span>As of <b>${escapeHtml(data.as_of_et || "")}</b> · ${relativeTime(data.generated_at)}${stale ? ' · <span class="pf-neg">stale</span>' : ""}${errs}</span><span>v${data.version} · 10-min source · polled every 60s</span>`;
+  $("pf-head").innerHTML = `<span>As of <b>${escapeHtml(data.as_of_et || "")}</b> · ${relativeTime(data.generated_at)}${stale ? ' · <span class="pf-neg">stale</span>' : ""}${errs} <button type="button" class="pf-export" id="pf-export" title="Download this tab as a Markdown file">⬇ Export .md</button></span><span>v${data.version} · 10-min source · polled every 60s</span>`;
+  PF_AS_OF = data.as_of_et || "";
+  const ex = $("pf-export");
+  if (ex) ex.addEventListener("click", exportPortfolioMarkdown);
 
   // ---- Alpaca paper
   const p = data.paper || {};
