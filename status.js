@@ -1040,7 +1040,7 @@ function renderLessons(L) {
   if (!L || !(L.policies || []).length) { el.innerHTML = '<div class="pf-empty">no lesson records yet (nightly 21:05 ET)</div>'; return; }
   const minN = L.min_n || 30;
   const sig = (r) => r.id === "ts_faithful" ? "control"
-    : (r.significant ? '<span class="pf-pos">✓ significant</span>' : `<span class="pf-dim">forward n ${r.n_forward}/${minN} · not yet significant</span>`);
+    : (r.significant ? '<span class="pf-pos">✓ significant</span>' : `<span class="pf-dim">forward${r.freeze && r.freeze !== L.freeze ? " from " + escapeHtml(r.freeze.slice(5)) : ""} n ${r.n_forward}/${minN} · not yet significant</span>`);
   const pct = (v) => (v === null || v === undefined) ? "—" : `${v > 0 ? "+" : ""}${Number(v).toFixed(1)}%`;
   el.innerHTML = `<div class="pf-note">Same TS fills, SPG's own exits. Δ = policy minus TS-faithful (realized + unrealized). Δ/peak = Δ per $ of peak concurrent capital (DCA / re-entry commit more). As of ${et(L.as_of)} · parameters frozen ${escapeHtml(L.freeze || "")}; only trades filled after the freeze count toward T-6.</div>`
     + pfTable([
@@ -1055,7 +1055,40 @@ function renderLessons(L) {
       { label: "Max DD", num: true, fmt: (r) => money(r.max_drawdown, true) },
       { label: "Peak capital", num: true, fmt: (r) => money(r.peak_capital) },
       { label: "Evidence", fmt: (r) => sig(r) },
-    ], L.policies);
+    ], L.policies)
+    + '<div class="pf-note">Combination books (fade + …) and the <b>shadow selector</b> (picks one book per trade from strength × SPY 5-day trend, learning only from trades closed before the fill) count forward from 11-14 — T-8 compares them with fade exit on the same trades.</div>';
+  renderOptionLessons(L.options);
+}
+
+function renderOptionLessons(O) {
+  const el = $("pf-opt-lessons");
+  if (!el) return;
+  if (!O || !(O.policies || []).length) { el.innerHTML = '<div class="pf-empty">no option lesson records yet (nightly 21:05 ET)</div>'; return; }
+  const minN = O.min_n || 30;
+  const pct = (v) => (v === null || v === undefined) ? "—" : `${v > 0 ? "+" : ""}${Number(v).toFixed(1)}%`;
+  const ev = (r, ctl) => ctl ? "control" : `<span class="pf-dim">forward n ${r.n_forward}/${minN}</span>`;
+  el.innerHTML = `<div class="pf-note">Stage 0 — data only, no orders. Every touch-verified TS option entry, $2,000 of premium per trade (book seed ${money(O.seed)}); stops, TS-alert exits and policy exits pay the half-spread quoted at the alert, limit fills (entry, targets) don't. As of ${et(O.as_of)} · forward from ${escapeHtml(O.freeze || "")}; T-9 opens Stage 1.</div>`
+    + pfTable([
+      { label: "Option policy", fmt: (r) => r.id === "opt_ts_faithful@v1" ? `<b>${escapeHtml(r.label)}</b>` : escapeHtml(r.label) },
+      { label: "Equity now", num: true, fmt: (r) => money(r.equity) },
+      { label: "P&L", num: true, fmt: (r) => money(r.pnl, true) },
+      { label: "Δ vs TS", num: true, fmt: (r) => r.id === "opt_ts_faithful@v1" ? "—" : money(r.delta_vs_ts, true) },
+      { label: "Avg return", num: true, fmt: (r) => pct(r.avg_return_pct) },
+      { label: "Closed / open", num: true, fmt: (r) => `${r.n_closed} / ${r.n_open}` },
+      { label: "Win", num: true, fmt: (r) => r.win_rate === null || r.win_rate === undefined ? "—" : `${Math.round(r.win_rate * 100)}%` },
+      { label: "Spread paid", num: true, fmt: (r) => money(-r.spread_cost, true) },
+      { label: "Evidence", fmt: (r) => ev(r, r.id === "opt_ts_faithful@v1") },
+    ], O.policies)
+    + '<div class="pf-note">Contract choice — the same exits (TS-faithful times and fractions) on TS\'s contract and on alternatives SPG could have picked from the chain at the alert. Market-style fills both ways, so Δ is the contract alone.</div>'
+    + pfTable([
+      { label: "Contract", fmt: (r) => r.role === "ts" ? `<b>${escapeHtml(r.label)}</b>` : escapeHtml(r.label) },
+      { label: "Closed", num: true, fmt: (r) => r.n_closed },
+      { label: "P&L", num: true, fmt: (r) => money(r.pnl, true) },
+      { label: "Avg return", num: true, fmt: (r) => pct(r.avg_return_pct) },
+      { label: "Δ vs TS's contract", num: true, fmt: (r) => r.role === "ts" ? "—" : money(r.delta_vs_ts, true) },
+      { label: "Avg half-spread", num: true, fmt: (r) => pct(r.avg_half_spread_pct) },
+      { label: "Evidence", fmt: (r) => ev(r, r.role === "ts") },
+    ], O.contracts);
 }
 
 function renderPortfolio(data) {
